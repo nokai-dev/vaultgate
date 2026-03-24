@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { CIBAHandler } from './ciba.js';
 
 describe('ciba', () => {
@@ -90,6 +90,42 @@ describe('ciba', () => {
       // Should timeout since intervalMs > timeoutMs
       expect(result.status).toBe('expired');
       expect(result.error).toBeDefined();
+    });
+
+    // ---------------------------------------------------------------------------
+    // Gap coverage: ciba.ts line 37 — `demoApprovalDelay ?? 3` fallback
+    // The constructor sets demoApprovalDelay from env or config.demoApprovalDelay.
+    // When Partial<CIBAConfig> omits demoApprovalDelay AND env var is absent,
+    // the ?? 3 fallback fires.
+    // ---------------------------------------------------------------------------
+    it('demoApprovalDelay falls back to 3 when config omits it and env var absent', async () => {
+      // Clear env var so isNaN(envDelay) path fires, config.demoApprovalDelay
+      // is also undefined — exercising `?? 3` at construction
+      delete process.env.DEMO_APPROVAL_DELAY_POLLS;
+      const handler = new CIBAHandler({ intervalMs: 80, timeoutMs: 500 });
+      // Fallback = 3 polls at 80ms → approval at ~240ms
+      const start = Date.now();
+      const result = await handler.requestTokenWithCIBA(
+        'test-conn', 'slack', 'write', '#general'
+      );
+      expect(result.status).toBe('approved');
+      // Should not resolve before poll 3
+      expect(Date.now() - start).toBeGreaterThanOrEqual(160); // at least 2 intervals
+    });
+
+    // ---------------------------------------------------------------------------
+    // Gap coverage: ciba.ts line 122 — `this.config.demoApprovalDelay ?? 3`
+    // Even when config sets demoApprovalDelay=undefined explicitly,
+    // the runtime ?? fires and uses 3.
+    // ---------------------------------------------------------------------------
+    it('poll loop uses fallback when demoApprovalDelay is explicitly undefined', async () => {
+      // @ts-expect-error — intentionally pass undefined so runtime ?? fires
+      const handler = new CIBAHandler({ intervalMs: 50, timeoutMs: 300, demoApprovalDelay: undefined });
+      const result = await handler.requestTokenWithCIBA(
+        'test-conn', 'github', 'write', 'repo'
+      );
+      // undefined → fallback to 3 polls at 50ms = approval at ~150ms
+      expect(result.status).toBe('approved');
     });
 
     it('CIBA poll loop runs approximately 3 polls before auto-approve', async () => {
