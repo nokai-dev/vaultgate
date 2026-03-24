@@ -9,6 +9,7 @@ import { getCIBABindingMessage, getRequiredScope, requiresCIBA } from './scopes.
 export interface CIBAConfig {
   intervalMs: number;      // How often to poll Auth0 (default 2000ms)
   timeoutMs: number;       // Total wait time (default 60000ms = 60s)
+  demoApprovalDelay?: number; // Poll count before simulated approval in demo mode (default: 3)
 }
 
 /**
@@ -18,17 +19,22 @@ export interface CIBAConfig {
  * For the hackathon demo, we simulate:
  * 1. CIBA push notification sent (shown in terminal)
  * 2. Poll loop running (visible in terminal)
- * 3. User approval (simulated after a few polls)
+ * 3. User approval (simulated after configurable polls)
  * 4. Token returned
+ * 
+ * Environment variables for demo tuning:
+ *   DEMO_APPROVAL_DELAY_POLLS  — polls to wait before approval (default: 3)
  */
 export class CIBAHandler {
   private config: CIBAConfig;
   private pollCount = 0;
 
   constructor(config?: Partial<CIBAConfig>) {
+    const envDelay = parseInt(process.env.DEMO_APPROVAL_DELAY_POLLS ?? '', 10);
     this.config = {
       intervalMs: config?.intervalMs ?? 2000,
       timeoutMs: config?.timeoutMs ?? 60000,
+      demoApprovalDelay: config?.demoApprovalDelay ?? (isNaN(envDelay) ? 3 : envDelay),
     };
   }
 
@@ -79,6 +85,10 @@ export class CIBAHandler {
     console.log('║  [CIBA] WAITING FOR USER APPROVAL...                         ║');
     console.log('╠══════════════════════════════════════════════════════════════╣');
 
+    // Phone buzzing animation frames
+    const buzzFrames = ['📲', '📳', '📲', '📳'];
+    let buzzIdx = 0;
+
     while (this.pollCount < maxPolls && Date.now() - startTime < this.config.timeoutMs) {
       this.pollCount++;
       
@@ -91,11 +101,25 @@ export class CIBAHandler {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
       const remaining = Math.max(0, Math.floor((this.config.timeoutMs / 1000) - elapsed));
       
-      console.log(`║  [${this.pollCount.toString().padStart(3)}] ${bar} ${remaining}s left  ║`);
+      // Alternate phone icon to simulate buzzing
+      const buzz = buzzFrames[buzzIdx % buzzFrames.length];
+      buzzIdx++;
+      
+      // Show push status every other poll for visual interest
+      if (this.pollCount === 1) {
+        console.log(`║  ${buzz} AWAITING...         ${bar} ${remaining}s left  ║`);
+      } else if (this.pollCount === 2) {
+        console.log(`║  ${buzz} CHECK PHONE!        ${bar} ${remaining}s left  ║`);
+      } else if (this.pollCount === 3) {
+        console.log(`║  ${buzz} TAP APPROVE          ${bar} ${remaining}s left  ║`);
+      } else {
+        console.log(`║  ${buzz} STILL WAITING...     ${bar} ${remaining}s left  ║`);
+      }
 
-      // Simulate user approval after ~3 polls (6 seconds) for demo
+      // Simulate user approval after configurable polls (demo mode)
       // In production, this would be real Auth0 polling
-      if (this.pollCount >= 3) {
+      // Tune with DEMO_APPROVAL_DELAY_POLLS env var or demoApprovalDelay config
+      if (this.pollCount >= (this.config.demoApprovalDelay ?? 3)) {
         // User approved!
         console.log('╠══════════════════════════════════════════════════════════════╣');
         console.log('║  ✅ APPROVED! User granted consent on Auth0 Guardian         ║');
