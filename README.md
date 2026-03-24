@@ -2,7 +2,13 @@
 
 **Secure gateway agent for Auth0 Token Vault — CIBA-powered human-in-the-loop auth for AI agents**
 
-> "Authorized to Act" — Auth0 for AI Agents Hackathon Project
+VaultGate uses a simulated Auth0 Token Vault integration. The `@auth0/auth0-ai` SDK patterns are documented in the code comments. In production, you would install:
+
+```bash
+npm install @auth0/auth0-ai
+```
+
+And configure real Auth0 credentials (see Auth0 Setup section below).
 
 ## The Problem
 

@@ -13,7 +13,6 @@
   "keywords": ["auth0", "token-vault", "ciba", "ai-agents", "security"],
   "license": "MIT",
   "dependencies": {
-    "@auth0/auth0-ai": "^1.0.0",
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5"
