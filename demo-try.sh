@@ -35,15 +35,29 @@ success() { echo -e "${GREEN}[✅]${RESET}  $1"; }
 warn()    { echo -e "${YELLOW}[⚠️]${RESET}  $1"; }
 error()   { echo -e "${RED}[❌]${RESET}  $1"; }
 
+# Kill any existing process on our port (orphaned servers from previous runs)
+kill_port() {
+  local port=$1
+  local pid=$(fuser ${port}/tcp 2>/dev/null | tr -s ' ' '\n' | grep -v '^$' | head -1)
+  if [[ -n "$pid" ]] && [[ "$pid" != " " ]]; then
+    warn "Killing orphaned process on port ${port} (PID ${pid})..."
+    kill -9 $pid 2>/dev/null || true
+    sleep 1
+  fi
+}
+
 # Write raw JSON to temp files so we can parse cleanly
 TMP_RESP=$(mktemp)
 
 cleanup() {
   info "Shutting down demo server..."
+  # Kill our spawned server
   if [[ -f "$PID_FILE" ]]; then
     kill "$(cat "$PID_FILE")" 2>/dev/null || true
     rm -f "$PID_FILE"
   fi
+  # Always release our port
+  kill_port $PORT
   rm -f "$DEMO_LOG" "$TMP_RESP"
   info "Demo complete."
 }
@@ -107,6 +121,9 @@ echo ""
 # Step 1 — Start server
 #-------------------------------------------------------------------------------
 header "STEP 1 — Starting VaultGate Server"
+
+info "Clearing any orphaned servers on port ${PORT}..."
+kill_port $PORT
 
 info "Starting server on http://${HOST}:${PORT} ..."
 npx tsx src/index.ts > "$DEMO_LOG" 2>&1 &
