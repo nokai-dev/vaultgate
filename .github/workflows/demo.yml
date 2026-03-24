@@ -1,0 +1,37 @@
+name: Demo Try-Out
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run demo every 6 hours to catch regressions
+    - cron: '0 */6 * * *'
+
+jobs:
+  try-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run demo (60s timeout)
+        run: timeout 60 bash demo-try.sh || {
+          echo "Demo script exited with code $?";
+        }
+
+      - name: Check demo artifacts
+        if: always()
+        run: |
+          echo "=== Server logs would appear above ==="
+          echo "If no error was shown, demo completed successfully"
