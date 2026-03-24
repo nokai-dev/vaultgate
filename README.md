@@ -243,6 +243,7 @@ npm run dev
 | `AUTH0_TOKEN_VAULT_CONNECTION_ID` | `slack` | Token Vault connection ID |
 | `VAULTGATE_PORT` | `18792` | HTTP server port |
 | `VAULTGATE_HOST` | `localhost` | HTTP server host |
+| `DEMO_APPROVAL_DELAY_POLLS` | `3` | Polls before simulated CIBA approval in demo mode (tune for demo pacing) |
 
 ## License
 
