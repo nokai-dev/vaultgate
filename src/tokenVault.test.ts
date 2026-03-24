@@ -23,6 +23,7 @@ describe('tokenVault', () => {
       const info = vault.getConnectionInfo();
       expect(info.demoMode).toBe(true);
       expect(info.domain).toBe('demo.auth0.com');
+      expect(info.connectionId).toBe('slack');
     });
 
     it('getActiveTokens returns empty array initially', () => {
@@ -85,6 +86,15 @@ describe('tokenVault', () => {
 
       const revoked = await vault.revokeToken(tokenState.tokenId);
       expect(revoked).toBe(true);
+
+      // Also verify the token shows as revoked
+      const tokens = vault.getActiveTokens();
+      expect(tokens.find(t => t.tokenId === tokenState.tokenId)).toBeUndefined();
+    });
+
+    it('revokeToken returns false for non-existent token', async () => {
+      const result = await vault.revokeToken('tok_nonexistent');
+      expect(result).toBe(false);
     });
 
     it('revokeAllTokens removes all tokens', async () => {
@@ -96,6 +106,45 @@ describe('tokenVault', () => {
 
       const tokens = vault.getActiveTokens();
       expect(tokens.length).toBe(0);
+    });
+
+    it('getActiveTokens expires stale tokens', async () => {
+      // Create a token vault with very short TTL
+      const shortVault = new TokenVault({
+        tokenTtlSeconds: 0, // Immediately expired
+        cibaTimeoutMs: 1000,
+        cibaIntervalMs: 100,
+      });
+
+      await shortVault.requestToken('slack', 'read', '#general');
+      const tokens = shortVault.getActiveTokens();
+      expect(tokens.length).toBe(0); // Should be expired and removed
+    });
+
+    it('requestToken throws on CIBA denial', async () => {
+      // A very short timeout CIBA handler that can't get approval
+      const shortVault = new TokenVault({
+        tokenTtlSeconds: 600,
+        cibaTimeoutMs: 50, // Too short to get approval
+        cibaIntervalMs: 200,
+      });
+
+      await expect(
+        shortVault.requestToken('slack', 'write', '#general', 'Test')
+      ).rejects.toThrow('CIBA failed');
+    });
+
+    it('supports all four services', async () => {
+      const services = ['slack', 'google', 'github', 'email'] as const;
+      for (const svc of services) {
+        _resetActiveTokens();
+        const { tokenState } = await vault.requestToken(svc, 'read', 'test-target');
+        expect(tokenState.service).toBe(svc);
+      }
+    });
+
+    it('isConnected returns false in demo mode', () => {
+      expect(vault.isConnected()).toBe(false);
     });
   });
 });

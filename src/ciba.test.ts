@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CIBAHandler } from './ciba.js';
 
 describe('ciba', () => {
@@ -20,8 +20,21 @@ describe('ciba', () => {
       expect(handler).toBeDefined();
     });
 
+    it('can be created with defaults', () => {
+      const handler = new CIBAHandler({});
+      expect(handler).toBeDefined();
+    });
+
     it('shouldUseCIBA returns true for write action', () => {
       expect(cibaHandler.shouldUseCIBA('write')).toBe(true);
+    });
+
+    it('shouldUseCIBA returns true for delete action', () => {
+      expect(cibaHandler.shouldUseCIBA('delete')).toBe(true);
+    });
+
+    it('shouldUseCIBA returns true for admin action', () => {
+      expect(cibaHandler.shouldUseCIBA('admin')).toBe(true);
     });
 
     it('shouldUseCIBA returns false for read action', () => {
@@ -47,14 +60,26 @@ describe('ciba', () => {
       expect(result.token).toContain('.');
     });
 
-    it('CIBA timeout triggers when no approval received', async () => {
-      // Handler with very short timeout and no approval simulation
+    it('CIBA generates valid JWT-like token structure', async () => {
+      const result = await cibaHandler.requestTokenWithCIBA(
+        'slack-connection',
+        'github',
+        'write',
+        'repo-name',
+        'Push commits'
+      );
+
+      expect(result.status).toBe('approved');
+      const parts = result.token!.split('.');
+      expect(parts.length).toBe(3); // JWT header.payload.signature
+    });
+
+    it('CIBA timeout triggers when timeoutMs is very short', async () => {
       const handler = new CIBAHandler({
         intervalMs: 100,
-        timeoutMs: 150, // Very short timeout
+        timeoutMs: 50, // Very short — less than 1 poll
       });
 
-      // Manually set pollCount to high value to trigger timeout path
       const result = await handler.requestTokenWithCIBA(
         'test-connection',
         'slack',
@@ -62,9 +87,32 @@ describe('ciba', () => {
         '#general'
       );
 
-      // With short timeout, should either get approved (since approval is after 3 polls)
-      // or expired if timeout hits first
-      expect(['approved', 'expired']).toContain(result.status);
+      // Should timeout since intervalMs > timeoutMs
+      expect(result.status).toBe('expired');
+      expect(result.error).toBeDefined();
+    });
+
+    it('CIBA poll loop runs approximately 3 polls before auto-approve', async () => {
+      const intervalMs = 80;
+      const handler = new CIBAHandler({
+        intervalMs,
+        timeoutMs: 2000,
+      });
+
+      const start = Date.now();
+      const result = await handler.requestTokenWithCIBA(
+        'test',
+        'slack',
+        'write',
+        '#general'
+      );
+      const elapsed = Date.now() - start;
+
+      expect(result.status).toBe('approved');
+      // Auto-approve fires after 3 polls, each intervalMs apart
+      // Allow generous timing tolerance for CI environments
+      expect(elapsed).toBeGreaterThanOrEqual(intervalMs * 2);
+      expect(elapsed).toBeLessThan(intervalMs * 6); // Should not take 6+ intervals
     });
   });
 });
