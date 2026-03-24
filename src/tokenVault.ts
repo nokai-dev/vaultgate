@@ -23,6 +23,11 @@ export interface TokenVaultConfig {
 // In-memory token store (ephemeral — no persistence)
 const activeTokens: Map<string, TokenState> = new Map();
 
+// Reset function for testing
+export function _resetActiveTokens(): void {
+  activeTokens.clear();
+}
+
 /**
  * TokenVault — manages ephemeral token lifecycle
  */

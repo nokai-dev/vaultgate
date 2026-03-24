@@ -1,7 +1,7 @@
 /**
  * VaultGate HTTP Server
  * Listens on port 18792 for action requests from CLI or AI agents
- * 
+ *
  * Endpoints:
  *   POST /action    - Execute an action (triggers CIBA for writes)
  *   GET  /status    - Get vault status and active tokens
@@ -21,7 +21,7 @@ const HOST = process.env.VAULTGATE_HOST ?? 'localhost';
 const vaultgate = createVaultGate();
 
 // Create Express app
-const app = express();
+export const app = express();
 
 // Middleware
 app.use(cors());
@@ -36,7 +36,7 @@ app.use((req: Request, _res: Response, next) => {
 /**
  * POST /action
  * Execute an action through VaultGate
- * 
+ *
  * Body: { service, action, target, body? }
  */
 app.post('/action', async (req: Request, res: Response) => {
@@ -122,33 +122,39 @@ app.use((err: Error, _req: Request, res: Response, _next: express.NextFunction) 
   res.status(500).json({ success: false, error: err.message });
 });
 
-// Start server
-app.listen(PORT, HOST, () => {
-  console.log('\n╔══════════════════════════════════════════════════════════════════╗');
-  console.log('║                                                                  ║');
-  console.log('║   🔐 VAULTGATE — Auth0 Token Vault Gateway                       ║');
-  console.log('║                                                                  ║');
-  console.log('╠══════════════════════════════════════════════════════════════════╣');
-  console.log('║                                                                  ║');
-  console.log(`║   HTTP Server running on http://${HOST}:${PORT}                   ║`);
-  console.log('║                                                                  ║');
-  console.log('║   Endpoints:                                                     ║');
-  console.log('║     POST /action  — Execute action (triggers CIBA for writes)   ║');
-  console.log('║     GET  /status  — Vault status + active tokens                ║');
-  console.log('║     POST /revoke   — Revoke all tokens                           ║');
-  console.log('║     GET  /health   — Health check                                ║');
-  console.log('║                                                                  ║');
-  console.log('╚══════════════════════════════════════════════════════════════════╝\n');
-  console.log('Waiting for requests...\n');
-});
+// Only start server if this is the main module
+let server: ReturnType<typeof app.listen> | null = null;
+
+if (process.argv[1]?.endsWith('index.ts') || process.argv[1]?.endsWith('index.js')) {
+  server = app.listen(PORT, HOST, () => {
+    console.log('\n╔══════════════════════════════════════════════════════════════════╗');
+    console.log('║                                                                  ║');
+    console.log('║   🔐 VAULTGATE — Auth0 Token Vault Gateway                       ║');
+    console.log('║                                                                  ║');
+    console.log('╠══════════════════════════════════════════════════════════════════╣');
+    console.log('║                                                                  ║');
+    console.log(`║   HTTP Server running on http://${HOST}:${PORT}                   ║`);
+    console.log('║                                                                  ║');
+    console.log('║   Endpoints:                                                     ║');
+    console.log('║     POST /action  — Execute action (triggers CIBA for writes)   ║');
+    console.log('║     GET  /status  — Vault status + active tokens                ║');
+    console.log('║     POST /revoke   — Revoke all tokens                           ║');
+    console.log('║     GET  /health   — Health check                                ║');
+    console.log('║                                                                  ║');
+    console.log('╚══════════════════════════════════════════════════════════════════╝\n');
+    console.log('Waiting for requests...\n');
+  });
+}
 
 // Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\n\nShutting down VaultGate...');
+export const shutdown = () => {
+  if (server) {
+    server.close();
+  }
   process.exit(0);
-});
+};
 
-process.on('SIGTERM', () => {
-  console.log('\n\nShutting down VaultGate...');
-  process.exit(0);
-});
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
+export { PORT, HOST };
