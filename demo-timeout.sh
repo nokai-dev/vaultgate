@@ -1,22 +1,20 @@
 #!/usr/bin/env bash
 # =============================================================================
-# VaultGate — Fully Automated Local Demo (No Auth0 Required)
+# VaultGate — CIBA Timeout Walkthrough (No Auth0 Required)
 # =============================================================================
-# Runs the complete CIBA walkthrough using the live HTTP API.
-# No external services, no real Auth0 — everything is simulated.
+# Demonstrates the CIBA timeout path when user doesn't approve.
+# Uses DEMO_FORCE_TIMEOUT=1 to simulate a user who never approves.
 #
 # What it demonstrates:
 #   1. READ  → silent token (no CIBA, fast)
-#   2. WRITE → CIBA step-up auth (visible poll loop, 3-poll auto-approval)
-#   3. STATUS → shows active tokens
-#   4. REVOKE → clears all tokens
-#   5. Full CIBA walkthrough — phone buzzing, binding message, approval
+#   2. WRITE → CIBA triggered but user never approves
+#   3. Poll loop runs, eventually times out
+#   4. Status shows expired token, revoke clears it
 #
 # Requirements: Node.js >= 20, npm (no install needed — uses tsx directly)
 #
 # Usage:
-#   npm run try          # via package.json
-#   bash demo-try.sh     # directly
+#   bash demo-timeout.sh    # directly
 # =============================================================================
 
 set -e
@@ -32,9 +30,9 @@ RESET='\033[0m'
 VG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$VG_DIR"
 
-# Demo config — fast CIBA (3 polls × 400ms ≈ 1.2s instead of 6s default)
-export DEMO_APPROVAL_DELAY_POLLS=3
-export VAULTGATE_PORT=18792
+# Demo config — FORCE timeout (3-minute walkthrough compressed to fast timeout)
+export DEMO_FORCE_TIMEOUT=1
+export VAULTGATE_PORT=18793
 export VAULTGATE_HOST=localhost
 export VAULTGATE_QUIET=1   # suppress startup banner so JSON captures stay clean
 
@@ -67,10 +65,9 @@ wait_for_server() {
 # ---------------------------------------------------------------------------
 echo ""
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════╗${RESET}"
-echo -e "${CYAN}║${RESET}           ${BOLD}🔐 VaultGate — Auth0 Token Vault Demo${RESET}                  ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}       ${BOLD}🔐 VaultGate — CIBA Timeout Walkthrough${RESET}                  ${CYAN}║${RESET}"
 echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════╣${RESET}"
-echo -e "${CYAN}║${RESET}  Consumer-Initiated Backchannel Authentication (CIBA)           ${CYAN}║${RESET}"
-echo -e "${CYAN}║${RESET}  Human-in-the-loop auth for AI agents — no real Auth0 needed   ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  DEMO_FORCE_TIMEOUT=1 — user never approves, poll loop times out  ${CYAN}║${RESET}"
 echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════╝${RESET}"
 echo ""
 
@@ -155,11 +152,11 @@ echo -e "${BOLD}STEP 3 — WRITE with CIBA Step-Up Auth${RESET}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 
 echo -e "  ${BOLD}→${RESET} AI agent requests: ${GREEN}write${RESET} to ${YELLOW}#general${RESET}"
-echo -e "  ${BOLD}→${RESET} Message: \"Sprint planning starts at 3pm 🎯\""
+echo -e "  ${BOLD}→${RESET} Message: \"Deploy to production 🚀\""
 echo -e "  ${BOLD}→${RESET} Scope needed: ${CYAN}slack.messages.write${RESET}"
 echo -e "  ${BOLD}→${RESET} CIBA required: ${GREEN}YES${RESET} — push sent to Auth0 Guardian"
 echo ""
-echo -e "  ${YELLOW}⏳ Watch the poll loop below — this is the demo moment!${RESET}"
+echo -e "  ${YELLOW}⏳ DEMO_FORCE_TIMEOUT=1 — user never approves (timeout path)...${RESET}"
 echo ""
 
 WRITE_RESP=$(curl -s -X POST "http://${VAULTGATE_HOST}:${VAULTGATE_PORT}/action" \
@@ -209,20 +206,20 @@ echo_json "$STATUS_AFTER" | sed 's/^/    /'
 # ---------------------------------------------------------------------------
 echo ""
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════╗${RESET}"
-echo -e "${CYAN}║${RESET}                    ${BOLD}✅ DEMO COMPLETE${RESET}                                ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}               ${BOLD}⏰ TIMEOUT WALKTHROUGH COMPLETE${RESET}                    ${CYAN}║${RESET}"
 echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════╣${RESET}"
 echo -e "${CYAN}║${RESET}  What just happened:                                                  ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}                                                                      ${CYAN}║${RESET}"
-echo -e "${CYAN}║${RESET}  1. ${GREEN}READ${RESET} (slack:#engineering) — Silent token, no human needed        ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  1. ${GREEN}READ${RESET} (slack:#engineering) — Silent token, no human needed   ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}     AI agent got access instantly without interrupting the user   ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}                                                                      ${CYAN}║${RESET}"
-echo -e "${CYAN}║${RESET}  2. ${YELLOW}WRITE${RESET} (slack:#general) — CIBA triggered                         ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  2. ${YELLOW}WRITE${RESET} (slack:#general) — CIBA triggered, user never approved ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}     • Push notification sent to Auth0 Guardian                  ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}     • Poll loop ran (visible in terminal)                        ${CYAN}║${RESET}"
-echo -e "${CYAN}║${RESET}     • User approved on phone → token issued                      ${CYAN}║${RESET}"
-echo -e "${CYAN}║${RESET}     • Token auto-revoked after use (ephemeral)                   ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}     • User did NOT approve → request expired                     ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}     • No token issued — AI agent blocked from destructive action ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}                                                                      ${CYAN}║${RESET}"
-echo -e "${CYAN}║${RESET}  3. ${RED}REVOKE${RESET} — All tokens invalidated                         ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  3. ${RED}REVOKE${RESET} — Clean state, nothing to revoke (expired = no token)    ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}                                                                      ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}  Real Auth0 integration requires:                                     ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}    AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET env vars     ${CYAN}║${RESET}"

@@ -2,6 +2,9 @@
 
 **Secure gateway agent for Auth0 Token Vault — CIBA-powered human-in-the-loop auth for AI agents**
 
+[![codecov](https://codecov.io/gh/nokai-dev/vaultgate/graph/badge.svg)](https://codecov.io/gh/nokai-dev/vaultgate)
+[![Tests](https://github.com/nokai-dev/vaultgate/actions/workflows/tests-and-coverage.yml/badge.svg)](https://github.com/nokai-dev/vaultgate/actions)
+
 ---
 
 ## ⚠️ Demo Mode — No Auth0 Credentials Required
@@ -76,6 +79,28 @@ node cli/index.ts status
 
 # Revoke all tokens
 node cli/index.ts revoke
+```
+
+### Try It Out — Fully Automated Demo (~30 seconds)
+
+```bash
+npm run try
+```
+
+This starts the VaultGate server, runs through the complete CIBA walkthrough, and demonstrates:
+
+1. **READ** — Silent token (no human needed, instant)
+2. **WRITE** — CIBA step-up auth with visible poll loop
+3. **STATUS** — Shows active tokens
+4. **REVOKE** — Clears all tokens
+
+No Auth0 account required. Everything is simulated locally.
+
+**Other demo modes:**
+
+```bash
+npm run try:ci    # CI-friendly version (exit code 0 on success)
+bash demo-timeout.sh   # Shows CIBA timeout path (user doesn't approve)
 ```
 
 ## Auth0 Setup (Required for Production)
