@@ -1,26 +1,25 @@
 #!/usr/bin/env bash
-#===============================================================================
-# VaultGate — Fully Automated Local Demo
-# No Auth0 credentials needed. Runs the complete CIBA demo flow.
+# =============================================================================
+# VaultGate — Fully Automated Local Demo (No Auth0 Required)
+# =============================================================================
+# Runs the complete CIBA walkthrough using the live HTTP API.
+# No external services, no real Auth0 — everything is simulated.
 #
-# What it shows:
-#   1. VaultGate server starting on port 18792
-#   2. Silent token exchange (read — no CIBA)
-#   3. CIBA step-up auth poll loop (write — user approves on "phone")
-#   4. Token auto-revocation after use
-#   5. Status check showing zero active tokens
+# What it demonstrates:
+#   1. READ  → silent token (no CIBA, fast)
+#   2. WRITE → CIBA step-up auth (visible poll loop, 3-poll auto-approval)
+#   3. STATUS → shows active tokens
+#   4. REVOKE → clears all tokens
+#   5. Full CIBA walkthrough — phone buzzing, binding message, approval
 #
-# Usage:  npm run try
-#         bash demo-try.sh
-#===============================================================================
+# Requirements: Node.js >= 20, npm (no install needed — uses tsx directly)
+#
+# Usage:
+#   npm run try          # via package.json
+#   bash demo-try.sh     # directly
+# =============================================================================
 
 set -e
-
-PORT="${VAULTGATE_PORT:-18792}"
-HOST="${VAULTGATE_HOST:-localhost}"
-BASE_URL="http://${HOST}:${PORT}"
-PID_FILE="/tmp/vaultgate-demo-server.pid"
-DEMO_LOG="/tmp/vaultgate-demo.log"
 
 # Colours
 RED='\033[0;31m'
@@ -30,331 +29,207 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
-info()    { echo -e "${CYAN}[DEMO]${RESET}  $1"; }
-success() { echo -e "${GREEN}[✅]${RESET}  $1"; }
-warn()    { echo -e "${YELLOW}[⚠️]${RESET}  $1"; }
-error()   { echo -e "${RED}[❌]${RESET}  $1"; }
+VG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$VG_DIR"
 
-# Kill any existing process on our port (orphaned servers from previous runs)
-kill_port() {
-  local port=$1
-  local pid=$(fuser ${port}/tcp 2>/dev/null | tr -s ' ' '\n' | grep -v '^$' | head -1)
-  if [[ -n "$pid" ]] && [[ "$pid" != " " ]]; then
-    warn "Killing orphaned process on port ${port} (PID ${pid})..."
-    kill -9 $pid 2>/dev/null || true
-    sleep 1
-  fi
-}
+# Demo config — fast CIBA (3 polls × 400ms ≈ 1.2s instead of 6s default)
+export DEMO_APPROVAL_DELAY_POLLS=3
+export VAULTGATE_PORT=18792
+export VAULTGATE_HOST=localhost
 
-# Write raw JSON to temp files so we can parse cleanly
-TMP_RESP=$(mktemp)
+# Server startup
+SERVER_PID=""
+PORT_CHECK_RETRIES=20
 
 cleanup() {
-  info "Shutting down demo server..."
-  # Kill our spawned server
-  if [[ -f "$PID_FILE" ]]; then
-    kill "$(cat "$PID_FILE")" 2>/dev/null || true
-    rm -f "$PID_FILE"
+  if [[ -n "$SERVER_PID" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
+    echo -e "\n${YELLOW}Stopping VaultGate server (PID $SERVER_PID)...${RESET}"
+    kill "$SERVER_PID" 2>/dev/null || true
+    wait "$SERVER_PID" 2>/dev/null || true
   fi
-  # Always release our port
-  kill_port $PORT
-  rm -f "$DEMO_LOG" "$TMP_RESP"
-  info "Demo complete."
 }
-
 trap cleanup EXIT
 
 wait_for_server() {
-  local max_wait=15
-  local waited=0
-  while [[ $waited -lt $max_wait ]]; do
-    if curl -sf "${BASE_URL}/health" > /dev/null 2>&1; then
+  local retries=$1
+  for i in $(seq 1 $retries); do
+    if curl -s "http://${VAULTGATE_HOST}:${VAULTGATE_PORT}/health" > /dev/null 2>&1; then
       return 0
     fi
-    sleep 1
-    ((waited++))
+    sleep 0.25
   done
-  error "Server did not start in ${max_wait}s"
-  exit 1
+  return 1
 }
 
-jq_or_node() {
-  local key=$1
-  local file=$2
-  # Try jq first, fall back to node
-  if command -v jq &>/dev/null; then
-    jq -r ".$key // empty" "$file" 2>/dev/null
+# ---------------------------------------------------------------------------
+# Banner
+# ---------------------------------------------------------------------------
+echo ""
+echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════╗${RESET}"
+echo -e "${CYAN}║${RESET}           ${BOLD}🔐 VaultGate — Auth0 Token Vault Demo${RESET}                  ${CYAN}║${RESET}"
+echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════╣${RESET}"
+echo -e "${CYAN}║${RESET}  Consumer-Initiated Backchannel Authentication (CIBA)           ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  Human-in-the-loop auth for AI agents — no real Auth0 needed   ${CYAN}║${RESET}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════╝${RESET}"
+echo ""
+
+# ---------------------------------------------------------------------------
+# Check Node.js
+# ---------------------------------------------------------------------------
+NODE_VERSION=$(node -v 2>/dev/null || echo "")
+if [[ -z "$NODE_VERSION" ]]; then
+  echo -e "${RED}❌ Node.js is required but not found. Aborting.${RESET}"
+  exit 1
+fi
+echo -e "${GREEN}✓${RESET} Node.js ${NODE_VERSION}"
+
+# ---------------------------------------------------------------------------
+# Start VaultGate server in background
+# ---------------------------------------------------------------------------
+echo ""
+echo -e "${YELLOW}▶ Starting VaultGate HTTP server on port ${VAULTGATE_PORT}...${RESET}"
+
+# Use tsx to run the server directly (no build step needed)
+node_modules/.bin/tsx src/index.ts &
+SERVER_PID=$!
+
+echo -e "${GREEN}✓${RESET} VaultGate server started (PID $SERVER_PID)"
+
+if ! wait_for_server $PORT_CHECK_RETRIES; then
+  echo -e "${RED}❌ Server failed to start within ${PORT_CHECK_RETRIES} retries.${RESET}"
+  exit 1
+fi
+echo -e "${GREEN}✓${RESET} Server is ready"
+
+# ---------------------------------------------------------------------------
+# Helper: pretty JSON echo
+# ---------------------------------------------------------------------------
+jq_check=$(command -v jq 2>/dev/null || echo "")
+function echo_json() {
+  if [[ -n "$jq_check" ]]; then
+    echo "$1" | jq .
   else
-    node -e "const d=require('fs').readFileSync('$file','utf8');const j=JSON.parse(d);console.log(j.$key??'')" 2>/dev/null
+    echo "$1"
   fi
 }
 
-#-------------------------------------------------------------------------------
-header() {
-  echo ""
-  echo "╔══════════════════════════════════════════════════════════════════╗"
-  echo "║                                                                  ║"
-  printf "║   %-60s ║\n" "$1"
-  echo "║                                                                  ║"
-  echo "╚══════════════════════════════════════════════════════════════════╝"
-  echo ""
-}
-
-pause() { sleep 0.5; }
-
-#-------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# STEP 1 — Health check
+# ---------------------------------------------------------------------------
 echo ""
-echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║                                                                  ║"
-echo "║   🔐  VaultGate — Auth0 Token Vault Demo (No Auth0 Required)   ║"
-echo "║                                                                  ║"
-echo "╠══════════════════════════════════════════════════════════════════╣"
-echo "║                                                                  ║"
-echo "║   This demo runs entirely in DEMO MODE with no external         ║"
-echo "║   dependencies. It simulates the full CIBA auth flow that       ║"
-echo "║   would happen in production with real Auth0 credentials.       ║"
-echo "║                                                                  ║"
-echo "╚══════════════════════════════════════════════════════════════════╝"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "${BOLD}STEP 1 — Health Check${RESET}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+
+HEALTH=$(curl -s "http://${VAULTGATE_HOST}:${VAULTGATE_PORT}/health")
+echo -e "  ${GREEN}✓${RESET} GET /health"
+echo_json "$HEALTH" | sed 's/^/    /'
+
+# ---------------------------------------------------------------------------
+# STEP 2 — Silent token (read, no CIBA)
+# ---------------------------------------------------------------------------
+echo ""
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "${BOLD}STEP 2 — READ (Silent Token — No CIBA)${RESET}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+
+echo -e "  ${BOLD}→${RESET} AI agent requests: ${GREEN}read${RESET} from ${YELLOW}#engineering${RESET}"
+echo -e "  ${BOLD}→${RESET} Scope needed: ${CYAN}slack.messages.read${RESET}"
+echo -e "  ${BOLD}→${RESET} CIBA required: ${RED}NO${RESET} (read operations are silent)"
 echo ""
 
-#-------------------------------------------------------------------------------
-# Step 1 — Start server
-#-------------------------------------------------------------------------------
-header "STEP 1 — Starting VaultGate Server"
-
-info "Clearing any orphaned servers on port ${PORT}..."
-kill_port $PORT
-
-info "Starting server on http://${HOST}:${PORT} ..."
-npx tsx src/index.ts > "$DEMO_LOG" 2>&1 &
-echo $! > "$PID_FILE"
-
-info "Waiting for server to be ready..."
-wait_for_server
-
-success "Server is up!"
-
-curl -sf "${BASE_URL}/health" > "$TMP_RESP" 2>&1
-HEALTH_STATUS=$(jq_or_node "status" "$TMP_RESP")
-HEALTH_SVC=$(jq_or_node "service" "$TMP_RESP")
-HEALTH_VER=$(jq_or_node "version" "$TMP_RESP")
-echo "   Service : ${HEALTH_SVC:-VaultGate}"
-echo "   Version : ${HEALTH_VER:-1.0.0}"
-echo "   Status  : ${HEALTH_STATUS:-healthy}"
-
-pause
-
-#-------------------------------------------------------------------------------
-# Step 2 — Check initial status (no tokens)
-#-------------------------------------------------------------------------------
-header "STEP 2 — Initial Vault Status (No Active Tokens)"
-
-info "Calling GET /status ..."
-curl -sf "${BASE_URL}/status" > "$TMP_RESP" 2>&1
-CONNECTED=$(jq_or_node "vaultConnected" "$TMP_RESP")
-TOTAL=$(jq_or_node "totalActive" "$TMP_RESP")
-echo ""
-echo "   Vault Connected : $([ "$CONNECTED" = "true" ] && echo "YES" || echo "NO (Demo Mode)")"
-echo "   Active Tokens  : ${TOTAL:-0}"
-echo ""
-
-pause
-
-#-------------------------------------------------------------------------------
-# Step 3 — Silent token exchange (read action — no CIBA)
-#-------------------------------------------------------------------------------
-header "STEP 3 — Silent Token Exchange (READ action — no CIBA)"
-
-info "Simulating AI agent request: read Slack channel"
-echo ""
-echo "   ┌─────────────────────────────────────────────────────────────┐"
-echo "   │  {                                                        │"
-echo "   │    \"service\": \"slack\",                                      │"
-echo "   │    \"action\":  \"read\",                                      │"
-echo "   │    \"target\":  \"#engineering\"                              │"
-echo "   │  }                                                        │"
-echo "   └─────────────────────────────────────────────────────────────┘"
-echo ""
-
-info "Sending POST /action ..."
-
-curl -sf -X POST "${BASE_URL}/action" \
+READ_RESP=$(curl -s -X POST "http://${VAULTGATE_HOST}:${VAULTGATE_PORT}/action" \
   -H "Content-Type: application/json" \
-  -d '{"service":"slack","action":"read","target":"#engineering"}' > "$TMP_RESP" 2>&1
+  -d '{"service":"slack","action":"read","target":"#engineering"}')
 
-SUCCESS=$(jq_or_node "success" "$TMP_RESP")
-REQ_ID=$(jq_or_node "requestId" "$TMP_RESP")
-TOK_ID=$(jq_or_node "tokenState.tokenId" "$TMP_RESP")
-SCOPE=$(jq_or_node "tokenState.scope" "$TMP_RESP")
-TOK_STATUS=$(jq_or_node "tokenState.status" "$TMP_RESP")
-TTL=$(jq_or_node "tokenState.ttlSeconds" "$TMP_RESP")
-MSG=$(jq_or_node "result.message" "$TMP_RESP")
+echo_json "$READ_RESP" | sed 's/^/    /'
 
+# ---------------------------------------------------------------------------
+# STEP 3 — CIBA step-up (write, triggers poll loop)
+# ---------------------------------------------------------------------------
 echo ""
-echo "   Status     : $([ "$SUCCESS" = "true" ] && echo "✅ SUCCESS" || echo "❌ FAILED")"
-echo "   Request ID : ${REQ_ID:-n/a}"
-[[ -n "$TOK_ID" ]] && echo "   Token ID   : ${TOK_ID}"
-[[ -n "$SCOPE" ]]  && echo "   Scope      : ${SCOPE}"
-[[ -n "$TOK_STATUS" ]] && echo "   Status     : ${TOK_STATUS}"
-[[ -n "$TTL" ]]    && echo "   TTL        : ${TTL}s"
-[[ -n "$MSG" ]]   && echo "   Result     : ${MSG}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "${BOLD}STEP 3 — WRITE with CIBA Step-Up Auth${RESET}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 
-success "Read token issued silently — no CIBA step-up needed!"
-info "Token auto-revoked after use (ephemeral)"
-pause
-
-#-------------------------------------------------------------------------------
-# Step 4 — CIBA flow (write action — triggers step-up auth)
-#-------------------------------------------------------------------------------
-header "STEP 4 — CIBA Step-Up Authentication (WRITE action)"
-
-info "Simulating AI agent request: post to Slack #design"
+echo -e "  ${BOLD}→${RESET} AI agent requests: ${GREEN}write${RESET} to ${YELLOW}#general${RESET}"
+echo -e "  ${BOLD}→${RESET} Message: \"Sprint planning starts at 3pm 🎯\""
+echo -e "  ${BOLD}→${RESET} Scope needed: ${CYAN}slack.messages.write${RESET}"
+echo -e "  ${BOLD}→${RESET} CIBA required: ${GREEN}YES${RESET} — push sent to Auth0 Guardian"
 echo ""
-echo "   ┌─────────────────────────────────────────────────────────────────┐"
-echo "   │  {                                                                │"
-echo "   │    \"service\": \"slack\",                                              │"
-echo "   │    \"action\":  \"write\",                                             │"
-echo "   │    \"target\":  \"#design\",                                           │"
-echo "   │    \"body\":    \"Design Review — Friday 2pm in Room 4B\"             │"
-echo "   │  }                                                                │"
-echo "   └─────────────────────────────────────────────────────────────────┘"
+echo -e "  ${YELLOW}⏳ Watch the poll loop below — this is the demo moment!${RESET}"
 echo ""
 
-info "Sending POST /action (CIBA fires — user approves after ~2s)..."
-echo ""
-
-curl -sf -X POST "${BASE_URL}/action" \
+WRITE_RESP=$(curl -s -X POST "http://${VAULTGATE_HOST}:${VAULTGATE_PORT}/action" \
   -H "Content-Type: application/json" \
-  -d '{"service":"slack","action":"write","target":"#design","body":"Design Review — Friday 2pm in Room 4B"}' > "$TMP_RESP" 2>&1
+  -d '{"service":"slack","action":"write","target":"#general","body":"Sprint planning starts at 3pm 🎯"}')
 
-SUCCESS=$(jq_or_node "success" "$TMP_RESP")
-REQ_ID=$(jq_or_node "requestId" "$TMP_RESP")
-TOK_ID=$(jq_or_node "tokenState.tokenId" "$TMP_RESP")
-SCOPE=$(jq_or_node "tokenState.scope" "$TMP_RESP")
-TOK_STATUS=$(jq_or_node "tokenState.status" "$TMP_RESP")
-TTL=$(jq_or_node "tokenState.ttlSeconds" "$TMP_RESP")
-MSG=$(jq_or_node "result.message" "$TMP_RESP")
+echo_json "$WRITE_RESP" | sed 's/^/    /'
 
+# ---------------------------------------------------------------------------
+# STEP 4 — Status (shows active tokens)
+# ---------------------------------------------------------------------------
 echo ""
-echo "   Status     : $([ "$SUCCESS" = "true" ] && echo "✅ SUCCESS" || echo "❌ FAILED")"
-echo "   Request ID : ${REQ_ID:-n/a}"
-[[ -n "$TOK_ID" ]] && echo "   Token ID   : ${TOK_ID}"
-[[ -n "$SCOPE" ]]  && echo "   Scope      : ${SCOPE}"
-[[ -n "$TOK_STATUS" ]] && echo "   Status     : ${TOK_STATUS}"
-[[ -n "$TTL" ]]    && echo "   TTL        : ${TTL}s"
-[[ -n "$MSG" ]]   && echo "   Result     : ${MSG}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "${BOLD}STEP 4 — Vault Status${RESET}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 
-success "CIBA step-up auth completed — user approved on Auth0 Guardian!"
-pause
+STATUS_RESP=$(curl -s "http://${VAULTGATE_HOST}:${VAULTGATE_PORT}/status")
+echo -e "  ${GREEN}✓${RESET} GET /status"
+echo_json "$STATUS_RESP" | sed 's/^/    /'
 
-#-------------------------------------------------------------------------------
-# Step 5 — Status after operations
-#-------------------------------------------------------------------------------
-header "STEP 5 — Vault Status After Operations"
-
-info "Calling GET /status ..."
-curl -sf "${BASE_URL}/status" > "$TMP_RESP" 2>&1
-CONNECTED=$(jq_or_node "vaultConnected" "$TMP_RESP")
-TOTAL=$(jq_or_node "totalActive" "$TMP_RESP")
+# ---------------------------------------------------------------------------
+# STEP 5 — Revoke all tokens
+# ---------------------------------------------------------------------------
 echo ""
-echo "   Vault Connected : $([ "$CONNECTED" = "true" ] && echo "YES" || echo "NO (Demo Mode)")"
-echo "   Active Tokens  : ${TOTAL:-0} (all auto-revoked after use)"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "${BOLD}STEP 5 — Revoke All Tokens${RESET}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+
+REVOKE_RESP=$(curl -s -X POST "http://${VAULTGATE_HOST}:${VAULTGATE_PORT}/revoke")
+echo -e "  ${GREEN}✓${RESET} POST /revoke"
+echo_json "$REVOKE_RESP" | sed 's/^/    /'
+
+# ---------------------------------------------------------------------------
+# STEP 6 — Verify clean state
+# ---------------------------------------------------------------------------
 echo ""
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "${BOLD}STEP 6 — Verify Clean State${RESET}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 
-pause
+STATUS_AFTER=$(curl -s "http://${VAULTGATE_HOST}:${VAULTGATE_PORT}/status")
+echo -e "  ${GREEN}✓${RESET} GET /status (after revoke)"
+echo_json "$STATUS_AFTER" | sed 's/^/    /'
 
-#-------------------------------------------------------------------------------
-# Step 6 — Revoke endpoint
-#-------------------------------------------------------------------------------
-header "STEP 6 — Revoke All Tokens Endpoint"
-
-# Issue a token first so we have something to revoke
-curl -sf -X POST "${BASE_URL}/action" \
-  -H "Content-Type: application/json" \
-  -d '{"service":"github","action":"read","target":"nokai-dev/vaultgate"}' > /dev/null 2>&1
-
-info "Issued 1 GitHub read token (auto-revoked after use)"
-info "Calling POST /revoke ..."
-
-curl -sf -X POST "${BASE_URL}/revoke" > "$TMP_RESP" 2>&1
-REV_SUCCESS=$(jq_or_node "success" "$TMP_RESP")
-REV_COUNT=$(jq_or_node "revokedCount" "$TMP_RESP")
-
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
 echo ""
-echo "   Success       : $([ "$REV_SUCCESS" = "true" ] && echo "YES" || echo "NO")"
-echo "   Revoked Count : ${REV_COUNT:-0}"
+echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════╗${RESET}"
+echo -e "${CYAN}║${RESET}                    ${BOLD}✅ DEMO COMPLETE${RESET}                                ${CYAN}║${RESET}"
+echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════╣${RESET}"
+echo -e "${CYAN}║${RESET}  What just happened:                                                  ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}                                                                      ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  1. ${GREEN}READ${RESET} (slack:#engineering) — Silent token, no human needed        ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}     AI agent got access instantly without interrupting the user   ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}                                                                      ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  2. ${YELLOW}WRITE${RESET} (slack:#general) — CIBA triggered                         ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}     • Push notification sent to Auth0 Guardian                  ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}     • Poll loop ran (visible in terminal)                        ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}     • User approved on phone → token issued                      ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}     • Token auto-revoked after use (ephemeral)                   ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}                                                                      ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  3. ${RED}REVOKE${RESET} — All tokens invalidated                         ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}                                                                      ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  Real Auth0 integration requires:                                     ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}    AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET env vars     ${CYAN}║${RESET}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════╝${RESET}"
 echo ""
-
-success "Revoke endpoint working correctly!"
-pause
-
-#-------------------------------------------------------------------------------
-# Step 7 — All services walkthrough
-#-------------------------------------------------------------------------------
-header "STEP 7 — All Services — Scope Mapping Summary"
-
-echo "   Service    Action    Scope"
-echo "   -------    ------    -----"
-echo "   slack      read      slack.messages.read"
-echo "   slack      write     slack.messages.write  ← CIBA"
-echo "   google     read      google.gmail.readonly"
-echo "   google     write     google.gmail.send     ← CIBA"
-echo "   github     read      github.repo.read"
-echo "   github     write     github.repo.write     ← CIBA"
-echo "   email      read      email.read"
-echo "   email      write     email.send            ← CIBA"
-echo "   email      delete    email.delete           ← CIBA"
-echo "   email      admin     email.admin            ← CIBA"
+echo -e "${BOLD}To run with real Auth0:${RESET}"
+echo "  export AUTH0_DOMAIN=your-tenant.auth0.com"
+echo "  export AUTH0_CLIENT_ID=your_client_id"
+echo "  export AUTH0_CLIENT_SECRET=your_client_secret"
+echo "  export AUTH0_TOKEN_VAULT_CONNECTION_ID=slack"
+echo "  bash demo-try.sh"
 echo ""
-
-declare -A SCOPE_MAP=(
-  ["google:write"]="google.gmail.send"
-  ["github:write"]="github.repo.write"
-  ["email:write"]="email.send"
-)
-
-for pair in "google:write:Gmail:Meeting at 3pm" "github:write:nokai-dev/vaultgate:Push feature"; do
-  SVC="${pair%%:*}"
-  REST="${pair#*:}"
-  ACT="${REST%%:*}"
-  BODY="${REST#*:}"
-  KEY="${SVC}:${ACT}"
-  EXP_SCOPE="${SCOPE_MAP[$KEY]}"
-
-  RESP=$(curl -sf -X POST "${BASE_URL}/action" \
-    -H "Content-Type: application/json" \
-    -d "{\"service\":\"${SVC}\",\"action\":\"${ACT}\",\"target\":\"inbox\",\"body\":\"${BODY}\"}" 2>/dev/null)
-
-  SCOPE=$(echo "$RESP" | node -e "try{const j=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));console.log(j.tokenState?.scope??'')}catch(e){console.log('')}" 2>/dev/null)
-  SCOPE="${SCOPE:-$EXP_SCOPE}"
-  CIBA_MARK="← CIBA"
-  printf "   %-10s %-8s %s %s\n" "$SVC" "$ACT" "$SCOPE" "$CIBA_MARK"
-done
-echo ""
-
-success "All services work correctly!"
-pause
-
-#-------------------------------------------------------------------------------
-# Final
-#-------------------------------------------------------------------------------
-echo ""
-echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║                                                                  ║"
-echo "║   ✅  DEMO COMPLETE — VaultGate is fully operational!          ║"
-echo "║                                                                  ║"
-echo "╠══════════════════════════════════════════════════════════════════╣"
-echo "║                                                                  ║"
-echo "║   To run the demo again:     npm run try                         ║"
-echo "║   To run the test suite:     npm test                            ║"
-echo "║   To start the server:       npm run dev                         ║"
-echo "║   To use the CLI:            npm run cli:dev                      ║"
-echo "║                                                                  ║"
-echo "║   For real Auth0 integration, set environment variables:        ║"
-echo "║     AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET           ║"
-echo "║     AUTH0_TOKEN_VAULT_CONNECTION_ID                             ║"
-echo "║                                                                  ║"
-echo "╚══════════════════════════════════════════════════════════════════╝"
-echo ""
-
-exit 0
