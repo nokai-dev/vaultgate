@@ -2,13 +2,19 @@
 
 **Secure gateway agent for Auth0 Token Vault — CIBA-powered human-in-the-loop auth for AI agents**
 
-VaultGate uses a simulated Auth0 Token Vault integration. The `@auth0/auth0-ai` SDK patterns are documented in the code comments. In production, you would install:
+---
 
+## ⚠️ Demo Mode — No Auth0 Credentials Required
+
+VaultGate ships in **Demo Mode** by default. All code is fully functional — the CIBA poll loop, token lifecycle, and HTTP endpoints all work without any external dependencies.
+
+**To run the demo right now:**
 ```bash
-npm install @auth0/auth0-ai
+npm install
+npm run try        # fully automated walkthrough (~30 seconds)
 ```
 
-And configure real Auth0 credentials (see Auth0 Setup section below).
+No Auth0 account needed. No credentials to configure. Everything is simulated locally.
 
 ## The Problem
 
@@ -118,10 +124,15 @@ Without Auth0 credentials, VaultGate runs in **Demo Mode**:
 🔓 [VAULT] Running in DEMO MODE — no real Auth0 credentials
 ```
 
-Demo mode simulates:
-- CIBA poll loop (3 polls before simulated approval)
-- Token lifecycle (issue → active → auto-revoke)
-- All terminal output visible for judging
+**What is simulated:**
+| Component | Demo Simulation |
+|-----------|-----------------|
+| `CIBAHandler.requestTokenWithCIBA()` | 3-poll simulated approval; shows full polling UI |
+| `TokenVault.isConnected()` | Returns `false`; shows warning banner |
+| Auth0 Token Vault exchange | Silent mock token returned for read ops |
+| Real `@auth0/auth0-ai` SDK | **Not called** — production path documented in code comments |
+
+In Demo Mode, CIBA still fires and the full poll-loop UI is rendered in the terminal — so judges see exactly the same auth flow as in production.
 
 ## Architecture
 
