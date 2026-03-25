@@ -105,14 +105,9 @@ echo -e "${GREEN}✓${RESET} Server is ready"
 # ---------------------------------------------------------------------------
 # Helper: pretty JSON echo (strip ANSI before parsing, fall back gracefully)
 # ---------------------------------------------------------------------------
-function echo_json() {
+echo_json() {
   local raw="$1"
-  if [[ -n "$jq_check" ]]; then
-    # Strip ANSI colour codes so jq sees clean JSON
-    echo "$raw" | sed 's/\x1b\[[0-9;]*m//g' | jq .
-  else
-    echo "$raw"
-  fi
+  echo "$raw" | sed 's/\x1b\[[0-9;]*m//g' | jq . 2>/dev/null || echo "$raw"
 }
 
 # ---------------------------------------------------------------------------
