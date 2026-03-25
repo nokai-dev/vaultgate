@@ -41,14 +41,32 @@ if (!process.env.VAULTGATE_QUIET) {
  *
  * Body: { service, action, target, body? }
  */
+const VALID_SERVICES = ['slack', 'google', 'github', 'email'] as const;
+const VALID_ACTIONS = ['read', 'write', 'delete', 'admin'] as const;
+
 app.post('/action', async (req: Request, res: Response) => {
   const actionRequest = req.body as ActionRequest;
 
-  // Validate request
+  // Validate required fields first
   if (!actionRequest.service || !actionRequest.action || !actionRequest.target) {
     return res.status(400).json({
       success: false,
       error: 'Missing required fields: service, action, target',
+    });
+  }
+
+  // HTTP-level validation — reject unknown services/actions with 400
+  if (!VALID_SERVICES.includes(actionRequest.service as typeof VALID_SERVICES[number])) {
+    return res.status(400).json({
+      success: false,
+      error: `Unknown service: '${actionRequest.service}'. Valid services: ${VALID_SERVICES.join(', ')}`,
+    });
+  }
+
+  if (!VALID_ACTIONS.includes(actionRequest.action as typeof VALID_ACTIONS[number])) {
+    return res.status(400).json({
+      success: false,
+      error: `Unknown action: '${actionRequest.action}'. Valid actions: ${VALID_ACTIONS.join(', ')}`,
     });
   }
 

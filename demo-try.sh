@@ -128,7 +128,15 @@ echo -e "${GREEN}✓${RESET} Server is ready"
 # ---------------------------------------------------------------------------
 echo_json() {
   local raw="$1"
-  echo "$raw" | sed 's/\x1b\[[0-9;]*m//g' | jq . 2>/dev/null || echo "$raw"
+  # Strip ANSI codes and format with jq if available, else just strip codes
+  local cleaned
+  cleaned=$(echo "$raw" | sed 's/\x1b\[[0-9;]*m//g')
+  if echo "$cleaned" | jq . > /dev/null 2>&1; then
+    echo "$cleaned" | jq .
+  else
+    # Raw output without ANSI
+    echo "$cleaned"
+  fi
 }
 
 # ---------------------------------------------------------------------------
