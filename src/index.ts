@@ -127,22 +127,24 @@ let server: ReturnType<typeof app.listen> | null = null;
 
 if (process.argv[1]?.endsWith('index.ts') || process.argv[1]?.endsWith('index.js')) {
   server = app.listen(PORT, HOST, () => {
-    console.log('\n╔══════════════════════════════════════════════════════════════════╗');
-    console.log('║                                                                  ║');
-    console.log('║   🔐 VAULTGATE — Auth0 Token Vault Gateway                       ║');
-    console.log('║                                                                  ║');
-    console.log('╠══════════════════════════════════════════════════════════════════╣');
-    console.log('║                                                                  ║');
-    console.log(`║   HTTP Server running on http://${HOST}:${PORT}                   ║`);
-    console.log('║                                                                  ║');
-    console.log('║   Endpoints:                                                     ║');
-    console.log('║     POST /action  — Execute action (triggers CIBA for writes)   ║');
-    console.log('║     GET  /status  — Vault status + active tokens                ║');
-    console.log('║     POST /revoke   — Revoke all tokens                           ║');
-    console.log('║     GET  /health   — Health check                                ║');
-    console.log('║                                                                  ║');
-    console.log('╚══════════════════════════════════════════════════════════════════╝\n');
-    console.log('Waiting for requests...\n');
+    if (!process.env.VAULTGATE_QUIET) {
+      console.log('\n╔══════════════════════════════════════════════════════════════════╗');
+      console.log('║                                                                  ║');
+      console.log('║   🔐 VAULTGATE — Auth0 Token Vault Gateway                       ║');
+      console.log('║                                                                  ║');
+      console.log('╠══════════════════════════════════════════════════════════════════╣');
+      console.log('║                                                                  ║');
+      console.log(`║   HTTP Server running on http://${HOST}:${PORT}                   ║`);
+      console.log('║                                                                  ║');
+      console.log('║   Endpoints:                                                     ║');
+      console.log('║     POST /action  — Execute action (triggers CIBA for writes)   ║');
+      console.log('║     GET  /status  — Vault status + active tokens                ║');
+      console.log('║     POST /revoke   — Revoke all tokens                           ║');
+      console.log('║     GET  /health   — Health check                                ║');
+      console.log('║                                                                  ║');
+      console.log('╚══════════════════════════════════════════════════════════════════╝\n');
+      console.log('Waiting for requests...\n');
+    }
   });
 }
 

@@ -36,6 +36,7 @@ cd "$VG_DIR"
 export DEMO_APPROVAL_DELAY_POLLS=3
 export VAULTGATE_PORT=18792
 export VAULTGATE_HOST=localhost
+export VAULTGATE_QUIET=1   # suppress startup banner so JSON captures stay clean
 
 # Server startup
 SERVER_PID=""
@@ -102,14 +103,15 @@ fi
 echo -e "${GREEN}✓${RESET} Server is ready"
 
 # ---------------------------------------------------------------------------
-# Helper: pretty JSON echo
+# Helper: pretty JSON echo (strip ANSI before parsing, fall back gracefully)
 # ---------------------------------------------------------------------------
-jq_check=$(command -v jq 2>/dev/null || echo "")
 function echo_json() {
+  local raw="$1"
   if [[ -n "$jq_check" ]]; then
-    echo "$1" | jq .
+    # Strip ANSI colour codes so jq sees clean JSON
+    echo "$raw" | sed 's/\x1b\[[0-9;]*m//g' | jq .
   else
-    echo "$1"
+    echo "$raw"
   fi
 }
 
