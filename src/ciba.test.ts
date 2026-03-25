@@ -119,7 +119,6 @@ describe('ciba', () => {
     // the runtime ?? fires and uses 3.
     // ---------------------------------------------------------------------------
     it('poll loop uses fallback when demoApprovalDelay is explicitly undefined', async () => {
-      // @ts-expect-error — intentionally pass undefined so runtime ?? fires
       const handler = new CIBAHandler({ intervalMs: 50, timeoutMs: 300, demoApprovalDelay: undefined });
       const result = await handler.requestTokenWithCIBA(
         'test-conn', 'github', 'write', 'repo'

@@ -18,6 +18,7 @@ export interface TokenVaultConfig {
   tokenTtlSeconds: number;
   cibaTimeoutMs: number;
   cibaIntervalMs: number;
+  demoApprovalDelay?: number; // passed to CIBA handler
 }
 
 // In-memory token store (ephemeral — no persistence)
@@ -51,6 +52,7 @@ export class TokenVault {
     this.cibaHandler = createCIBAHandler({
       timeoutMs: this.config.cibaTimeoutMs,
       intervalMs: this.config.cibaIntervalMs,
+      demoApprovalDelay: this.config.demoApprovalDelay,
     });
 
     // Demo mode if no real Auth0 credentials

@@ -10,6 +10,7 @@
     "dev": "tsx src/index.ts",
     "cli:dev": "tsx cli/index.ts",
     "try": "bash demo-try.sh",
+    "try:ci": "bash demo-ci.sh",
     "test": "vitest run",
     "test:watch": "vitest"
   },

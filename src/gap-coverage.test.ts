@@ -6,7 +6,7 @@
  * vaultgate.ts lines 88-97: error path in executeAction
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CIBAHandler } from './ciba.js';
 import { TokenVault, _resetActiveTokens } from './tokenVault.js';
 import { VaultGate } from './vaultgate.js';
