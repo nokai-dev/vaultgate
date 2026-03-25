@@ -27,11 +27,13 @@ export const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Request logging
-app.use((req: Request, _res: Response, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  next();
-});
+// Request logging (suppressed when VAULTGATE_QUIET=1 so demo scripts can capture clean JSON)
+if (!process.env.VAULTGATE_QUIET) {
+  app.use((req: Request, _res: Response, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    next();
+  });
+}
 
 /**
  * POST /action

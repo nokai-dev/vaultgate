@@ -75,24 +75,6 @@ echo -e "${CYAN}╚════════════════════�
 echo ""
 
 # ---------------------------------------------------------------------------
-# Port cleanup — kill any process already on VAULTGATE_PORT
-# ---------------------------------------------------------------------------
-kill_port() {
-  local port=$1
-  local pid
-  if command -v ss &>/dev/null; then
-    pid=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -o 'pid=[0-9]*' | cut -d= -f2 | tr -d ' ' | head -1)
-  elif command -v lsof &>/dev/null; then
-    pid=$(lsof -ti:${port} 2>/dev/null | head -1)
-  fi
-  if [[ -n "$pid" ]]; then
-    echo -e "${YELLOW}⚠ Killing orphaned process on port ${port} (PID ${pid})...${RESET}"
-    kill -9 $pid 2>/dev/null || true
-    sleep 1
-  fi
-}
-
-# ---------------------------------------------------------------------------
 # Check Node.js
 # ---------------------------------------------------------------------------
 NODE_VERSION=$(node -v 2>/dev/null || echo "")
@@ -107,9 +89,6 @@ echo -e "${GREEN}✓${RESET} Node.js ${NODE_VERSION}"
 # ---------------------------------------------------------------------------
 echo ""
 echo -e "${YELLOW}▶ Starting VaultGate HTTP server on port ${VAULTGATE_PORT}...${RESET}"
-
-# Clear port before starting
-kill_port $VAULTGATE_PORT
 
 # Use tsx to run the server directly (no build step needed)
 node_modules/.bin/tsx src/index.ts &
@@ -126,9 +105,14 @@ echo -e "${GREEN}✓${RESET} Server is ready"
 # ---------------------------------------------------------------------------
 # Helper: pretty JSON echo (strip ANSI before parsing, fall back gracefully)
 # ---------------------------------------------------------------------------
-echo_json() {
+function echo_json() {
   local raw="$1"
-  echo "$raw" | sed 's/\x1b\[[0-9;]*m//g' | jq . 2>/dev/null || echo "$raw"
+  if [[ -n "$jq_check" ]]; then
+    # Strip ANSI colour codes so jq sees clean JSON
+    echo "$raw" | sed 's/\x1b\[[0-9;]*m//g' | jq .
+  else
+    echo "$raw"
+  fi
 }
 
 # ---------------------------------------------------------------------------
