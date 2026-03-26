@@ -16,10 +16,10 @@ export default defineConfig({
         'src/index.ts', // HTTP server — integration-tested via supertest
       ],
       thresholds: {
-        statements: 85,
-        branches: 75,
-        functions: 85,
-        lines: 85,
+        statements: 90,
+        branches: 90,
+        functions: 90,
+        lines: 90,
       },
     },
     testTimeout: 15000,
