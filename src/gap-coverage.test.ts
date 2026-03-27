@@ -17,11 +17,13 @@ import { VaultGate } from './vaultgate.js';
 // ---------------------------------------------------------------------------
 describe('CIBA poll loop — continues polling before approval threshold (line 130 else)', () => {
   it('executes the else branch when pollCount < demoApprovalDelay', async () => {
-    // With demoApprovalDelay=99 and only 2 possible polls (100ms/50ms),
-    // every iteration hits the else branch (approval not yet reached)
+    // With demoApprovalDelay=99 and timeoutMs=300/intervalMs=50 (6 polls total),
+    // polls 4-6 all hit the else branch (pollCount >= 4 never matches the
+    // pollCount === 1/2/3 specific branches, only the catch-all else).
+    // This exercises line 130's else and the STILL WAITING... console branch.
     const ciba = new CIBAHandler({
       intervalMs: 50,
-      timeoutMs: 100,
+      timeoutMs: 300,
       demoApprovalDelay: 99, // impossibly high — never reaches approval
     });
 
