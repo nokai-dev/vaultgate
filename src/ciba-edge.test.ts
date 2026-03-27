@@ -63,14 +63,14 @@ describe('CIBA denial', () => {
 // ---------------------------------------------------------------------------
 // CIBA poll-count >= 5 path (line 130 else-branch / STILL WAITING)
 // Must have: maxPolls >= 5 AND demoApprovalDelay > 5 (so approval never fires)
-// intervalMs=100ms + timeoutMs=600ms → maxPolls = 6, polls 5 hit the else branch
-// demoApprovalDelay=999 → approval will never fire → pollCount=5 hits else
+// intervalMs=100ms + timeoutMs=6000ms → 60 polls fit, poll 5 is first STILL WAITING
+// demoApprovalDelay=999 → approval will never fire → pollCount 5-59 all hit else
 // ---------------------------------------------------------------------------
 describe('CIBA pollCount >= 5 else-branch', () => {
   it('hits STILL WAITING else-branch (line 130) when approval never comes', async () => {
     const ciba = new CIBAHandler({
-      intervalMs: 100,   // 6 polls total (0..5) within 600ms
-      timeoutMs: 600,
+      intervalMs: 100,   // 100ms per poll — 60 polls fit in 6000ms timeout
+      timeoutMs: 6000,   // 6 seconds — allows polls 1-59 to all hit STILL WAITING
       demoApprovalDelay: 999, // approval will never fire in time
     });
 
@@ -82,8 +82,9 @@ describe('CIBA pollCount >= 5 else-branch', () => {
       'push'
     );
 
-    // pollCount goes 1→2→3→4→5→6, poll 5 is the first >=5 (STILL WAITING)
-    // Then times out
+    // pollCount goes 1→2→3→4→5→...→59→60, then times out
+    // pollCount=1 AWAITING, pollCount=2 CHECK PHONE, pollCount=3 TAP APPROVE
+    // pollCount=4-59 → STILL WAITING (line 130 else-branch, the 1.07% gap)
     expect(result.status).toBe('expired');
   });
 });
