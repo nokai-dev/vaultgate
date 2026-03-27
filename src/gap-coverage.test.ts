@@ -12,6 +12,32 @@ import { TokenVault, _resetActiveTokens } from './tokenVault.js';
 import { VaultGate } from './vaultgate.js';
 
 // ---------------------------------------------------------------------------
+// ciba.ts line 130 branch — approval not yet reached, continue polling
+// The "else" branch of  pollCount >= demoApprovalDelay
+// ---------------------------------------------------------------------------
+describe('CIBA poll loop — continues polling before approval threshold (line 130 else)', () => {
+  it('executes the else branch when pollCount < demoApprovalDelay', async () => {
+    // With demoApprovalDelay=99 and only 2 possible polls (100ms/50ms),
+    // every iteration hits the else branch (approval not yet reached)
+    const ciba = new CIBAHandler({
+      intervalMs: 50,
+      timeoutMs: 100,
+      demoApprovalDelay: 99, // impossibly high — never reaches approval
+    });
+
+    // Should time out since demoApprovalDelay is never met
+    const result = await ciba.requestTokenWithCIBA(
+      'test-conn',
+      'slack',
+      'write',
+      '#general',
+      'Hello'
+    );
+    expect(result.status).toBe('expired');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // ciba.ts lines 71-72 — word-wrap when binding message exceeds line width
 // ---------------------------------------------------------------------------
 describe('CIBA binding message word-wrap (lines 71-72)', () => {
