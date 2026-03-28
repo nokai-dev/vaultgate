@@ -34,12 +34,14 @@ export class CIBAHandler {
     const hasExplicitDelay = config?.demoApprovalDelay !== undefined;
     
     this.config = {
-      intervalMs: config?.intervalMs ?? 2000,
-      timeoutMs: config?.timeoutMs ?? 60000,
+      // Non-null assertion safe: Partial<CIBAConfig> means caller may omit any fields;
+      // ?? handles the undefined case and always produces a number
+      intervalMs: config?.intervalMs !== undefined ? config.intervalMs! : 2000,
+      timeoutMs: config?.timeoutMs !== undefined ? config.timeoutMs! : 60000,
       // demoApprovalDelay is intentionally a required field — constructor always sets it
       // so the ?? 3 fallback at call-site (line 130) is dead code we'll remove
       demoApprovalDelay: hasExplicitDelay
-        ? config!.demoApprovalDelay
+        ? (config!.demoApprovalDelay as number)
         : (isNaN(envDelay) ? 3 : envDelay),
     };
   }
