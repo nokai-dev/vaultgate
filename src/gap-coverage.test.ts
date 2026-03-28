@@ -12,23 +12,17 @@ import { TokenVault, _resetActiveTokens } from './tokenVault.js';
 import { VaultGate } from './vaultgate.js';
 
 // ---------------------------------------------------------------------------
-// ciba.ts line 130 branch — approval not yet reached, continue polling
-// The "else" branch of  pollCount >= demoApprovalDelay
-// With intervalMs=100 and timeoutMs=6000: polls 1-59 hit the else branch
-// (polls 1-3 hit specific branches, polls 4-59 hit the STILL WAITING else)
+// ciba.ts line 130 — both branches of pollCount >= demoApprovalDelay
 // ---------------------------------------------------------------------------
-describe('CIBA poll loop — continues polling before approval threshold (line 130 else)', () => {
-  it('executes the else branch when pollCount < demoApprovalDelay', async () => {
-    // With demoApprovalDelay=999 and timeoutMs=6000/intervalMs=100 (60 polls),
-    // polls 4-59 all hit the else branch (pollCount >= 999 never matches).
-    // This exercises line 130's else and the STILL WAITING... console branch.
+describe('CIBA poll loop — both branches of approval condition (line 130)', () => {
+  it('FALSE branch: continues polling when pollCount < demoApprovalDelay', async () => {
+    // With demoApprovalDelay=999, approval never fires within 2s timeout.
+    // All 19 polls (2000/100) go through the false branch.
     const ciba = new CIBAHandler({
       intervalMs: 100,
-      timeoutMs: 6000,
-      demoApprovalDelay: 999, // impossibly high — never reaches approval
+      timeoutMs: 2000,
+      demoApprovalDelay: 999,
     });
-
-    // Should time out since demoApprovalDelay is never met
     const result = await ciba.requestTokenWithCIBA(
       'test-conn',
       'slack',
@@ -37,6 +31,67 @@ describe('CIBA poll loop — continues polling before approval threshold (line 1
       'Hello'
     );
     expect(result.status).toBe('expired');
+  });
+
+  it('TRUE branch: issues token when pollCount reaches demoApprovalDelay', async () => {
+    // With demoApprovalDelay=5 and intervalMs=100, approval fires at ~500ms.
+    // This exercises the TRUE branch of line 130 — the previously uncovered branch.
+    const ciba = new CIBAHandler({
+      intervalMs: 100,
+      timeoutMs: 5000,
+      demoApprovalDelay: 5,
+    });
+    const result = await ciba.requestTokenWithCIBA(
+      'test-conn',
+      'slack',
+      'write',
+      '#general',
+      'Hello'
+    );
+    expect(result.status).toBe('approved');
+    expect(result.token).toBeDefined();
+    expect(result.token).toMatch(/^eyJ/); // JWT format
+  });
+
+  it('TRUE branch fires at exactly demoApprovalDelay=1 (minimum polls)', async () => {
+    // Edge case: user approves on first poll (100ms)
+    const ciba = new CIBAHandler({
+      intervalMs: 100,
+      timeoutMs: 2000,
+      demoApprovalDelay: 1,
+    });
+    const result = await ciba.requestTokenWithCIBA(
+      'test-conn',
+      'github',
+      'write',
+      'my-repo',
+      'push'
+    );
+    expect(result.status).toBe('approved');
+    expect(result.token).toBeDefined();
+  });
+
+  it('TRUE branch works with DEMO_APPROVAL_DELAY_POLLS env var override', async () => {
+    // Verify env-driven demo approval delay also triggers the true branch
+    const original = process.env.DEMO_APPROVAL_DELAY_POLLS;
+    process.env.DEMO_APPROVAL_DELAY_POLLS = '2';
+    try {
+      const ciba = new CIBAHandler({
+        intervalMs: 100,
+        timeoutMs: 2000,
+      });
+      const result = await ciba.requestTokenWithCIBA(
+        'test-conn',
+        'email',
+        'write',
+        'user@example.com',
+        'hello'
+      );
+      expect(result.status).toBe('approved');
+    } finally {
+      if (original === undefined) delete process.env.DEMO_APPROVAL_DELAY_POLLS;
+      else process.env.DEMO_APPROVAL_DELAY_POLLS = original;
+    }
   });
 });
 
