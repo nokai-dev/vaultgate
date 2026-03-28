@@ -42,7 +42,7 @@ describe('CIBA approval branch — line 130 TRUE exit from poll loop', () => {
     expect(result.status).toBe('approved');
     expect(result.token).toBeDefined();
     // Token is a JWT-like structure; tok_ appears in the jti claim inside payload
-    const payload = result.token.split('.')[1];
+    const payload = result.token!.split('.')[1];
     const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString());
     expect(decoded.jti).toMatch(/^tok_/);
     expect(decoded.scope).toBe('slack.messages.write');
@@ -109,7 +109,7 @@ describe('CIBA approval branch — line 130 TRUE exit from poll loop', () => {
     expect(result.status).toBe('approved');
     expect(result.token).toBeDefined();
     // JWT-like: header.payload.signature
-    const parts = result.token.split('.');
+    const parts = result.token!.split('.');
     expect(parts.length).toBe(3);
     const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
     expect(payload.jti).toMatch(/^tok_/);
@@ -134,8 +134,8 @@ describe('CIBA approval branch — line 130 TRUE exit from poll loop', () => {
     expect(r2.status).toBe('approved');
     expect(r1.token).not.toBe(r2.token);
     // Scopes differ in the JWT payload
-    const p1 = JSON.parse(Buffer.from(r1.token.split('.')[1], 'base64url').toString());
-    const p2 = JSON.parse(Buffer.from(r2.token.split('.')[1], 'base64url').toString());
+    const p1 = JSON.parse(Buffer.from(r1.token!.split('.')[1], 'base64url').toString());
+    const p2 = JSON.parse(Buffer.from(r2.token!.split('.')[1], 'base64url').toString());
     expect(p1.scope).toBe('slack.messages.write');
     expect(p2.scope).toBe('github.repo.write');
   });
