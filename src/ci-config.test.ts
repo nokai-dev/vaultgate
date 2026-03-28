@@ -121,7 +121,7 @@ describe('demo scripts', () => {
 
   it('demo-timeout.sh exists', () => {
     const content = readFileSync(`${REPO_ROOT}/demo-timeout.sh`, 'utf8');
-    expect(content).toContain('DEMO_FORCE_TIMEOUT');
+    expect(content).toContain('DEMO_APPROVAL_DELAY_POLLS=9999');
     expect(content).toContain('timeout');
   });
 

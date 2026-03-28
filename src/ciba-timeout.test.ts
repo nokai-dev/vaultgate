@@ -1,25 +1,22 @@
 /**
- * CIBA Timeout & Force-Path Tests — exercises uncovered branches in ciba.ts
- * Coverage target: ciba.ts line 45 (DEMO_FORCE_TIMEOUT env path) and line 130 (timeout exit)
+ * CIBA Timeout Tests — exercises timeout exit from poll loop in ciba.ts
+ * Coverage target: ciba.ts timeout exit path and sequential CIBA pollCount isolation
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { CIBAHandler } from './ciba.js';
 
-describe('CIBA timeout & force paths', () => {
+describe('CIBA timeout paths', () => {
   afterEach(() => {
-    // Clean up env so subsequent tests aren't affected
-    delete process.env.DEMO_FORCE_TIMEOUT;
     delete process.env.DEMO_APPROVAL_DELAY_POLLS;
   });
 
   // ---------------------------------------------------------------------------
-  // ciba.ts line 45 — DEMO_FORCE_TIMEOUT=1 forces timeout without approval
+  // Force timeout: very high demoApprovalDelay + short timeout
   // ---------------------------------------------------------------------------
-  it('requestTokenWithCIBA times out when DEMO_FORCE_TIMEOUT=1', async () => {
-    process.env.DEMO_FORCE_TIMEOUT = '1';
-    // interval=100, timeout=350 → 3 polls before timeout
-    const handler = new CIBAHandler({ intervalMs: 100, timeoutMs: 350 });
+  it('requestTokenWithCIBA times out when approval never comes', async () => {
+    // demoApprovalDelay=9999 → approval never fires within 350ms timeout
+    const handler = new CIBAHandler({ intervalMs: 100, timeoutMs: 350, demoApprovalDelay: 9999 });
 
     const result = await handler.requestTokenWithCIBA(
       'test-conn',
@@ -34,8 +31,8 @@ describe('CIBA timeout & force paths', () => {
   });
 
   it('force timeout returns expired status not approved', async () => {
-    process.env.DEMO_FORCE_TIMEOUT = '1';
-    const handler = new CIBAHandler({ intervalMs: 50, timeoutMs: 300 });
+    // High approval delay ensures timeout fires first
+    const handler = new CIBAHandler({ intervalMs: 50, timeoutMs: 300, demoApprovalDelay: 9999 });
 
     const result = await handler.requestTokenWithCIBA(
       'test-conn',
@@ -49,8 +46,7 @@ describe('CIBA timeout & force paths', () => {
     expect(result.token).toBeUndefined();
   });
 
-  it('without DEMO_FORCE_TIMEOUT approval path fires normally', async () => {
-    // Explicit demoApprovalDelay overrides both env-based timeout and force path
+  it('without forced timeout approval path fires normally', async () => {
     const handler = new CIBAHandler({
       intervalMs: 50,
       timeoutMs: 1000,
@@ -69,8 +65,6 @@ describe('CIBA timeout & force paths', () => {
   });
 
   it('DEMO_APPROVAL_DELAY_POLLS env var controls approval timing', async () => {
-    // When DEMO_FORCE_TIMEOUT is NOT set, DEMO_APPROVAL_DELAY_POLLS controls
-    delete process.env.DEMO_FORCE_TIMEOUT;
     process.env.DEMO_APPROVAL_DELAY_POLLS = '5';
     // interval=50, approval at poll 5 → ~250ms
     const handler = new CIBAHandler({ intervalMs: 50, timeoutMs: 1000 });

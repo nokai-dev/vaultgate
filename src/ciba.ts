@@ -9,8 +9,7 @@ import { getCIBABindingMessage, getRequiredScope, requiresCIBA } from './scopes.
 export interface CIBAConfig {
   intervalMs: number;      // How often to poll Auth0 (default 2000ms)
   timeoutMs: number;       // Total wait time (default 60000ms = 60s)
-  demoApprovalDelay?: number; // Poll count before simulated approval in demo mode (default: 3)
-  forceTimeout?: boolean;   // Force timeout path for demo purposes
+  demoApprovalDelay: number; // Poll count before simulated approval in demo mode (default: 3)
 }
 
 /**
@@ -33,16 +32,15 @@ export class CIBAHandler {
   constructor(config?: Partial<CIBAConfig>) {
     const envDelay = parseInt(process.env.DEMO_APPROVAL_DELAY_POLLS ?? '', 10);
     const hasExplicitDelay = config?.demoApprovalDelay !== undefined;
-    // DEMO_FORCE_TIMEOUT=1 forces timeout path — but only when user hasn't
-    // passed an explicit demoApprovalDelay (tests use explicit values)
-    const forceTimeout = !hasExplicitDelay && process.env.DEMO_FORCE_TIMEOUT === '1';
     
     this.config = {
       intervalMs: config?.intervalMs ?? 2000,
       timeoutMs: config?.timeoutMs ?? 60000,
-      demoApprovalDelay: hasExplicitDelay 
-        ? config!.demoApprovalDelay 
-        : (forceTimeout ? 9999 : (isNaN(envDelay) ? 3 : envDelay)),
+      // demoApprovalDelay is intentionally a required field — constructor always sets it
+      // so the ?? 3 fallback at call-site (line 130) is dead code we'll remove
+      demoApprovalDelay: hasExplicitDelay
+        ? config!.demoApprovalDelay
+        : (isNaN(envDelay) ? 3 : envDelay),
     };
   }
 
@@ -127,7 +125,7 @@ export class CIBAHandler {
       // Simulate user approval after configurable polls (demo mode)
       // In production, this would be real Auth0 polling
       // Tune with DEMO_APPROVAL_DELAY_POLLS env var or demoApprovalDelay config
-      if (this.pollCount >= (this.config.demoApprovalDelay ?? 3)) {
+      if (this.pollCount >= this.config.demoApprovalDelay) {
         // User approved!
         console.log('╠══════════════════════════════════════════════════════════════╣');
         console.log('║  ✅ APPROVED! User granted consent on Auth0 Guardian         ║');

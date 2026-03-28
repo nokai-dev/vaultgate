@@ -3,7 +3,7 @@
 # VaultGate — CIBA Timeout Walkthrough (No Auth0 Required)
 # =============================================================================
 # Demonstrates the CIBA timeout path when user doesn't approve.
-# Uses DEMO_FORCE_TIMEOUT=1 to simulate a user who never approves.
+# Uses DEMO_APPROVAL_DELAY_POLLS=9999 to simulate a user who never approves.
 #
 # What it demonstrates:
 #   1. READ  → silent token (no CIBA, fast)
@@ -31,7 +31,7 @@ VG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$VG_DIR"
 
 # Demo config — FORCE timeout (3-minute walkthrough compressed to fast timeout)
-export DEMO_FORCE_TIMEOUT=1
+export DEMO_APPROVAL_DELAY_POLLS=9999
 export VAULTGATE_PORT=18793
 export VAULTGATE_HOST=localhost
 export VAULTGATE_QUIET=1   # suppress startup banner so JSON captures stay clean
@@ -67,7 +67,7 @@ echo ""
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════╗${RESET}"
 echo -e "${CYAN}║${RESET}       ${BOLD}🔐 VaultGate — CIBA Timeout Walkthrough${RESET}                  ${CYAN}║${RESET}"
 echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════╣${RESET}"
-echo -e "${CYAN}║${RESET}  DEMO_FORCE_TIMEOUT=1 — user never approves, poll loop times out  ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  DEMO_APPROVAL_DELAY_POLLS=9999 — user never approves, poll loop times out  ${CYAN}║${RESET}"
 echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════╝${RESET}"
 echo ""
 
@@ -156,7 +156,7 @@ echo -e "  ${BOLD}→${RESET} Message: \"Deploy to production 🚀\""
 echo -e "  ${BOLD}→${RESET} Scope needed: ${CYAN}slack.messages.write${RESET}"
 echo -e "  ${BOLD}→${RESET} CIBA required: ${GREEN}YES${RESET} — push sent to Auth0 Guardian"
 echo ""
-echo -e "  ${YELLOW}⏳ DEMO_FORCE_TIMEOUT=1 — user never approves (timeout path)...${RESET}"
+echo -e "  ${YELLOW}⏳ DEMO_APPROVAL_DELAY_POLLS=9999 — user never approves (timeout path)...${RESET}"
 echo ""
 
 WRITE_RESP=$(curl -s -X POST "http://${VAULTGATE_HOST}:${VAULTGATE_PORT}/action" \

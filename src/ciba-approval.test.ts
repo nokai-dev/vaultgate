@@ -1,7 +1,7 @@
 /**
- * CIBA Approval Branch Tests — line 130 branch in ciba.ts
+ * CIBA Approval Branch Tests — approval condition in ciba.ts poll loop
  *
- * The branch: `if (this.pollCount >= (this.config.demoApprovalDelay ?? 3))`
+ * The approval condition: `if (this.pollCount >= this.config.demoApprovalDelay)`
  * is TRUE when enough polls have elapsed (user approved on Auth0 Guardian).
  * The else branch is the "keep waiting" path (covered by gap-coverage.test.ts).
  *
@@ -15,7 +15,6 @@ import { CIBAHandler } from './ciba.js';
 describe('CIBA approval branch — line 130 TRUE exit from poll loop', () => {
   afterEach(() => {
     delete process.env.DEMO_APPROVAL_DELAY_POLLS;
-    delete process.env.DEMO_FORCE_TIMEOUT;
   });
 
   // ---------------------------------------------------------------------------
