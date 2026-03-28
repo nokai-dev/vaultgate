@@ -5,7 +5,8 @@
 # and dependency misalignment (as required by AGENTS.md Build Verification Rules).
 #===============================================================================
 
-cd /data/.openclaw/workspace/vaultgate
+VG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$VG_DIR"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
