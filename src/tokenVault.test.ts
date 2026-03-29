@@ -7,6 +7,7 @@ describe('tokenVault', () => {
   beforeEach(() => {
     _resetActiveTokens();
     vault = new TokenVault({
+      demoMode: true,
       tokenTtlSeconds: 600,
       cibaTimeoutMs: 5000,
       cibaIntervalMs: 100,
@@ -16,7 +17,7 @@ describe('tokenVault', () => {
   describe('TokenVault', () => {
     it('can be created in demo mode', () => {
       expect(vault).toBeDefined();
-      expect(vault.isConnected()).toBe(false);
+      expect(vault.isVaultConnected()).toBe(false);
     });
 
     it('getConnectionInfo returns demo mode info', () => {
@@ -124,6 +125,7 @@ describe('tokenVault', () => {
     it('requestToken throws on CIBA denial', async () => {
       // A very short timeout CIBA handler that can't get approval
       const shortVault = new TokenVault({
+        demoMode: true,
         tokenTtlSeconds: 600,
         cibaTimeoutMs: 50, // Too short to get approval
         cibaIntervalMs: 200,
@@ -144,7 +146,7 @@ describe('tokenVault', () => {
     });
 
     it('isConnected returns false in demo mode', () => {
-      expect(vault.isConnected()).toBe(false);
+      expect(vault.isVaultConnected()).toBe(false);
     });
   });
 });

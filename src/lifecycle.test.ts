@@ -11,7 +11,7 @@ describe('token lifecycle', () => {
 
   beforeEach(() => {
     _resetActiveTokens();
-    vault = new TokenVault({
+    vault = new TokenVault({ demoMode: true,
       tokenTtlSeconds: 600,
       cibaTimeoutMs: 2000,
       cibaIntervalMs: 50,
@@ -72,7 +72,7 @@ describe('token lifecycle', () => {
     });
 
     it('short ttl vault issues tokens with reduced expiry', async () => {
-      const shortVault = new TokenVault({
+      const shortVault = new TokenVault({ demoMode: true,
         tokenTtlSeconds: 30,
         cibaTimeoutMs: 2000,
         cibaIntervalMs: 50,
@@ -111,7 +111,7 @@ describe('token lifecycle', () => {
 
   describe('expiry', () => {
     it('expired tokens are removed from active list', async () => {
-      const shortVault = new TokenVault({
+      const shortVault = new TokenVault({ demoMode: true,
         tokenTtlSeconds: 0, // Immediately expired
         cibaTimeoutMs: 1000,
         cibaIntervalMs: 50,
@@ -122,7 +122,7 @@ describe('token lifecycle', () => {
     });
 
     it('tokens with 1ms TTL expire quickly', async () => {
-      const fastVault = new TokenVault({
+      const fastVault = new TokenVault({ demoMode: true,
         tokenTtlSeconds: 0,
         cibaTimeoutMs: 1000,
         cibaIntervalMs: 50,

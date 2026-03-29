@@ -220,7 +220,7 @@ describe('VaultGate error handling (lines 88-97)', () => {
 
   beforeEach(() => {
     _resetActiveTokens();
-    vault = new TokenVault({
+    vault = new TokenVault({ demoMode: true,
       tokenTtlSeconds: 600,
       cibaTimeoutMs: 2000,
       cibaIntervalMs: 50,

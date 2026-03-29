@@ -9,6 +9,7 @@ describe('vaultgate', () => {
   beforeEach(() => {
     _resetActiveTokens();
     vault = new TokenVault({
+      demoMode: true,
       tokenTtlSeconds: 600,
       cibaTimeoutMs: 2000,
       cibaIntervalMs: 50,

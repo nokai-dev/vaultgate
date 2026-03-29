@@ -16,7 +16,7 @@ describe('CIBA denial', () => {
 
   beforeEach(() => {
     _resetActiveTokens();
-    vault = new TokenVault({
+    vault = new TokenVault({ demoMode: true,
       tokenTtlSeconds: 600,
       cibaTimeoutMs: 5000,
       cibaIntervalMs: 50,
@@ -141,7 +141,7 @@ describe('concurrent token issuance', () => {
 
   beforeEach(() => {
     _resetActiveTokens();
-    vault = new TokenVault({
+    vault = new TokenVault({ demoMode: true,
       tokenTtlSeconds: 600,
       cibaTimeoutMs: 3000,
       cibaIntervalMs: 50,
@@ -251,7 +251,7 @@ describe('delete action scope mapping', () => {
 
   beforeEach(() => {
     _resetActiveTokens();
-    vault = new TokenVault({ cibaTimeoutMs: 2000, cibaIntervalMs: 50 });
+    vault = new TokenVault({ demoMode: true, cibaTimeoutMs: 2000, cibaIntervalMs: 50 });
   });
 
   it('slack delete maps to slack.messages.write (no separate delete scope)', async () => {

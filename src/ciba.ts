@@ -1,54 +1,69 @@
 /**
- * CIBA Flow Handler — Consumer-Initiated Backchannel Authentication
- * This is the core demo moment: shows VaultGate waiting for user approval on phone
+ * CIBA Handler — Real Auth0 Implementation using auth0 SDK
+ * Uses AuthenticationClient.backchannel for RFC 8693 CIBA flow
+ *
+ * Supports two modes:
+ * - Real mode: uses auth0 SDK to call Auth0 CIBA endpoints (requires credentials)
+ * - Demo mode: falls back to simulated CIBA when no credentials (for testing only)
  */
 
-import { CIBAPollResult, ActionType, ServiceType } from './types.js';
+import { AuthenticationClient } from 'auth0';
+import type { ActionType, ServiceType } from './types.js';
 import { getCIBABindingMessage, getRequiredScope, requiresCIBA } from './scopes.js';
 
 export interface CIBAConfig {
-  intervalMs: number;      // How often to poll Auth0 (default 2000ms)
-  timeoutMs: number;       // Total wait time (default 60000ms = 60s)
-  demoApprovalDelay: number; // Poll count before simulated approval in demo mode (default: 3)
+  domain: string;
+  clientId: string;
+  clientSecret: string;
+  connectionId: string;
+  intervalMs: number;
+  timeoutMs: number;
+  /** User ID or email for CIBA login_hint (e.g. auth0|... or user@example.com) */
+  loginHint?: string;
+  /** Demo mode: simulate CIBA flow without real Auth0 calls (for testing) */
+  demoMode?: boolean;
+}
+
+export type CIBAStatus = 'approved' | 'denied' | 'expired' | 'pending';
+
+export interface CIBAResult {
+  status: CIBAStatus;
+  token?: string;
+  error?: string;
+  errorCode?: string;
 }
 
 /**
- * Simulated CIBA flow for demo purposes
- * In production, this would use @auth0/auth0-ai with real Auth0 Token Vault
- * 
- * For the hackathon demo, we simulate:
- * 1. CIBA push notification sent (shown in terminal)
- * 2. Poll loop running (visible in terminal)
- * 3. User approval (simulated after configurable polls)
- * 4. Token returned
- * 
- * Environment variables for demo tuning:
- *   DEMO_APPROVAL_DELAY_POLLS  — polls to wait before approval (default: 3)
+ * Real CIBA handler using auth0 SDK.
+ * Falls back to demo simulation when no credentials are configured.
  */
 export class CIBAHandler {
+  private auth0: AuthenticationClient | null = null;
   private config: CIBAConfig;
-  private pollCount = 0;
+  private demoMode: boolean = false;
 
-  constructor(config?: Partial<CIBAConfig>) {
-    const envDelay = parseInt(process.env.DEMO_APPROVAL_DELAY_POLLS ?? '', 10);
-    const hasExplicitDelay = config?.demoApprovalDelay !== undefined;
-    
-    this.config = {
-      // Non-null assertion safe: Partial<CIBAConfig> means caller may omit any fields;
-      // ?? handles the undefined case and always produces a number
-      intervalMs: config?.intervalMs !== undefined ? config.intervalMs! : 2000,
-      timeoutMs: config?.timeoutMs !== undefined ? config.timeoutMs! : 60000,
-      // demoApprovalDelay is intentionally a required field — constructor always sets it
-      // so the ?? 3 fallback at call-site (line 130) is dead code we'll remove
-      demoApprovalDelay: hasExplicitDelay
-        ? (config!.demoApprovalDelay as number)
-        : (isNaN(envDelay) ? 3 : envDelay),
-    };
+  constructor(config: CIBAConfig) {
+    this.config = config;
+
+    // Determine mode: explicit demoMode flag, or missing credentials
+    this.demoMode = config.demoMode ?? (!config.domain || !config.clientId || !config.clientSecret);
+
+    if (!this.demoMode) {
+      this.auth0 = new AuthenticationClient({
+        domain: config.domain,
+        clientId: config.clientId,
+        clientSecret: config.clientSecret,
+      });
+      console.log(`\n🔐 [CIBA] Real Auth0 CIBA mode at ${config.domain}`);
+    } else {
+      console.log('\n🔓 [CIBA] Running in DEMO MODE — no real Auth0 CIBA calls');
+    }
   }
 
   /**
-   * Initiate CIBA request and poll for approval
-   * This is the MAIN DEMO MOMENT — all terminal output here is visible to judges
+   * Execute the CIBA flow:
+   * 1. POST /bc-authorize → get auth_req_id (real or simulated)
+   * 2. Poll GET /oauth/token with auth_req_id until approved/denied/expired
    */
   async requestTokenWithCIBA(
     connectionId: string,
@@ -56,7 +71,7 @@ export class CIBAHandler {
     action: ActionType,
     target: string,
     body?: string
-  ): Promise<CIBAPollResult> {
+  ): Promise<CIBAResult> {
     const scope = getRequiredScope(service, action);
     const bindingMessage = getCIBABindingMessage(service, action, target, body);
 
@@ -69,8 +84,7 @@ export class CIBAHandler {
     console.log('║  📱 Push sent to Auth0 Guardian — check your phone!          ║');
     console.log('╠══════════════════════════════════════════════════════════════╣');
     console.log('║  BINDING MESSAGE:                                           ║');
-    
-    // Word wrap the binding message
+
     const maxWidth = 54;
     const words = bindingMessage.split(' ');
     let line = '║  ';
@@ -85,110 +99,192 @@ export class CIBAHandler {
     console.log(line.padEnd(maxWidth + 5) + '║');
     console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
-    // Poll loop — this is what judges watch
+    if (this.demoMode) {
+      return this.runDemoCIBA(connectionId, scope, bindingMessage);
+    }
+
+    return this.runRealCIBA(connectionId, scope, bindingMessage);
+  }
+
+  private async runRealCIBA(connectionId: string, scope: string, bindingMessage: string): Promise<CIBAResult> {
+    // Step 1: Start CIBA authorization request
+    let authReqId: string;
+    let expiresIn: number;
+    let intervalSec: number;
+
+    try {
+      const authResponse = await this.auth0!.backchannel.authorize({
+        userId: this.config.loginHint ?? '',
+        binding_message: bindingMessage,
+        scope: `openid ${scope}`,
+        connection: connectionId,
+        requested_expiry: Math.floor(this.config.timeoutMs / 1000).toString(),
+      });
+
+      authReqId = authResponse.auth_req_id;
+      expiresIn = authResponse.expires_in;
+      intervalSec = authResponse.interval ?? this.config.intervalMs / 1000;
+    } catch (err: unknown) {
+      const error = err as { message?: string; code?: string };
+      if (error.code === 'invalid_request') {
+        const msg = error.message ?? 'User does not have push notifications';
+        console.log(`\n🔴 [CIBA] Failed to send push: ${msg}\n`);
+        return { status: 'denied', error: msg, errorCode: 'PUSH_NOT_AVAILABLE' };
+      }
+      throw err;
+    }
+
+    // Step 2: Poll for approval
     const startTime = Date.now();
-    const maxPolls = Math.floor(this.config.timeoutMs / this.config.intervalMs);
-    
+    const intervalMs = intervalSec * 1000;
+    const timeoutMs = expiresIn * 1000;
+
     console.log('╔══════════════════════════════════════════════════════════════╗');
     console.log('║  [CIBA] WAITING FOR USER APPROVAL...                         ║');
     console.log('╠══════════════════════════════════════════════════════════════╣');
 
-    // Phone buzzing animation frames
-    const buzzFrames = ['📲', '📳', '📲', '📳'];
-    let buzzIdx = 0;
-
-    while (this.pollCount < maxPolls && Date.now() - startTime < this.config.timeoutMs) {
-      this.pollCount++;
-      
-      // Progress bar visualization
-      const progress = Math.min(this.pollCount / maxPolls, 1);
-      const filled = Math.floor(progress * 40);
-      const empty = 40 - filled;
-      const bar = '█'.repeat(filled) + '░'.repeat(empty);
-      
+    while (Date.now() - startTime < timeoutMs) {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const remaining = Math.max(0, Math.floor((this.config.timeoutMs / 1000) - elapsed));
-      
-      // Alternate phone icon to simulate buzzing
-      const buzz = buzzFrames[buzzIdx % buzzFrames.length];
-      buzzIdx++;
-      
-      // Show push status every other poll for visual interest
-      if (this.pollCount === 1) {
+      const remaining = Math.max(0, expiresIn - elapsed);
+      const progress = Math.min(elapsed / expiresIn, 1);
+      const filled = Math.floor(progress * 40);
+      const bar = '█'.repeat(filled) + '░'.repeat(40 - filled);
+
+      const buzzFrames = ['📲', '📳', '📲', '📳'];
+      const buzz = buzzFrames[Math.floor(elapsed / Math.max(1, Math.floor(intervalSec)))];
+
+      if (elapsed < 3) {
         console.log(`║  ${buzz} AWAITING...         ${bar} ${remaining}s left  ║`);
-      } else if (this.pollCount === 2) {
+      } else if (elapsed < 6) {
         console.log(`║  ${buzz} CHECK PHONE!        ${bar} ${remaining}s left  ║`);
-      } else if (this.pollCount === 3) {
+      } else if (elapsed < 9) {
         console.log(`║  ${buzz} TAP APPROVE          ${bar} ${remaining}s left  ║`);
       } else {
         console.log(`║  ${buzz} STILL WAITING...     ${bar} ${remaining}s left  ║`);
       }
 
-      // Simulate user approval after configurable polls (demo mode)
-      // In production, this would be real Auth0 polling
-      // Tune with DEMO_APPROVAL_DELAY_POLLS env var or demoApprovalDelay config
-      if (this.pollCount >= this.config.demoApprovalDelay) {
-        // User approved!
+      try {
+        const tokenResponse = await this.auth0!.backchannel.backchannelGrant({
+          auth_req_id: authReqId,
+        });
+
         console.log('╠══════════════════════════════════════════════════════════════╣');
         console.log('║  ✅ APPROVED! User granted consent on Auth0 Guardian         ║');
         console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
         return {
           status: 'approved',
-          token: this.generateDemoToken(scope),
+          token: tokenResponse.access_token,
         };
-      }
+      } catch (err: unknown) {
+        const error = err as { error?: string; error_description?: string };
 
-      // Wait before next poll
-      await this.sleep(this.config.intervalMs);
+        if (error.error === 'authorization_pending') {
+          await this.sleep(intervalMs);
+          continue;
+        }
+
+        if (error.error === 'slow_down') {
+          await this.sleep(intervalMs * 2);
+          continue;
+        }
+
+        if (error.error === 'access_denied') {
+          console.log('╠══════════════════════════════════════════════════════════════╣');
+          console.log('║  ❌ DENIED — User rejected the authorization request         ║');
+          console.log('╚══════════════════════════════════════════════════════════════╝\n');
+          return { status: 'denied', error: error.error_description ?? 'User denied', errorCode: 'ACCESS_DENIED' };
+        }
+
+        if (error.error === 'invalid_grant') {
+          console.log('╠══════════════════════════════════════════════════════════════╣');
+          console.log('║  ❌ EXPIRED — Authorization request expired                   ║');
+          console.log('╚══════════════════════════════════════════════════════════════╝\n');
+          return { status: 'expired', error: error.error_description ?? 'Expired', errorCode: 'INVALID_GRANT' };
+        }
+
+        throw err;
+      }
     }
 
-    // Timeout
     console.log('╠══════════════════════════════════════════════════════════════╣');
     console.log('║  ⏰ TIMEOUT — No approval received within 60 seconds          ║');
     console.log('╚══════════════════════════════════════════════════════════════╝\n');
-
-    return {
-      status: 'expired',
-      error: 'CIBA timeout — user did not approve in time',
-    };
+    return { status: 'expired', error: 'CIBA timeout', errorCode: 'TIMEOUT' };
   }
 
-  /**
-   * Generate a demo token (in production, this comes from Auth0)
-   */
-  private generateDemoToken(scope: string): string {
-    // Simulated JWT-like token for demo
-    const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-    const payload = Buffer.from(JSON.stringify({
-      scope,
-      aud: 'vaultgate',
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 600, // 10 min TTL
-      jti: `tok_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-    })).toString('base64url');
-    const signature = 'DEMO_SIGNATURE_' + Math.random().toString(36).slice(2);
-    return `${header}.${payload}.${signature}`;
+  private async runDemoCIBA(connectionId: string, scope: string, bindingMessage: string): Promise<CIBAResult> {
+    // Demo mode: simulate the CIBA poll loop with auto-approval after a few polls
+    const startTime = Date.now();
+    const maxPolls = Math.floor(this.config.timeoutMs / this.config.intervalMs);
+    const demoApprovalDelay = Math.min(3, maxPolls);
+    let pollCount = 0;
+
+    console.log('╔══════════════════════════════════════════════════════════════╗');
+    console.log('║  [CIBA] WAITING FOR USER APPROVAL...                         ║');
+    console.log('╠══════════════════════════════════════════════════════════════╣');
+
+    while (pollCount < maxPolls && Date.now() - startTime < this.config.timeoutMs) {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, Math.floor((this.config.timeoutMs / 1000) - elapsed));
+      const progress = Math.min(pollCount / maxPolls, 1);
+      const filled = Math.floor(progress * 40);
+      const bar = '█'.repeat(filled) + '░'.repeat(40 - filled);
+
+      const buzzFrames = ['📲', '📳', '📲', '📳'];
+      const buzz = buzzFrames[pollCount % buzzFrames.length];
+
+      if (pollCount === 0) {
+        console.log(`║  ${buzz} AWAITING...         ${bar} ${remaining}s left  ║`);
+      } else if (pollCount === 1) {
+        console.log(`║  ${buzz} CHECK PHONE!        ${bar} ${remaining}s left  ║`);
+      } else if (pollCount === 2) {
+        console.log(`║  ${buzz} TAP APPROVE          ${bar} ${remaining}s left  ║`);
+      } else {
+        console.log(`║  ${buzz} STILL WAITING...     ${bar} ${remaining}s left  ║`);
+      }
+
+      if (pollCount >= demoApprovalDelay) {
+        console.log('╠══════════════════════════════════════════════════════════════╣');
+        console.log('║  ✅ APPROVED! (Demo mode — auto-approved)                   ║');
+        console.log('╚══════════════════════════════════════════════════════════════╝\n');
+
+        // Generate a demo token (not a real JWT — for demo/test only)
+        const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+        const payload = Buffer.from(JSON.stringify({
+          scope,
+          aud: 'vaultgate-demo',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 600,
+          jti: `tok_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        })).toString('base64url');
+        const signature = 'DEMO_SIGNATURE';
+
+        return {
+          status: 'approved',
+          token: `${header}.${payload}.${signature}`,
+        };
+      }
+
+      await this.sleep(this.config.intervalMs);
+      pollCount++;
+    }
+
+    console.log('╠══════════════════════════════════════════════════════════════╣');
+    console.log('║  ⏰ TIMEOUT — No approval received within 60 seconds          ║');
+    console.log('╚══════════════════════════════════════════════════════════════╝\n');
+    return { status: 'expired', error: 'CIBA timeout', errorCode: 'TIMEOUT' };
   }
 
-  /**
-   * Sleep utility
-   */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  /**
-   * Check if an action requires CIBA
-   */
   shouldUseCIBA(action: ActionType): boolean {
     return requiresCIBA(action);
   }
 }
 
-/**
- * Factory to create CIBA handler with config
- */
-export function createCIBAHandler(config?: Partial<CIBAConfig>): CIBAHandler {
+export function createCIBAHandler(config: CIBAConfig): CIBAHandler {
   return new CIBAHandler(config);
 }

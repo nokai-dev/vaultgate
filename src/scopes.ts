@@ -66,6 +66,9 @@ export function getCIBABindingMessage(
   target: string,
   body?: string
 ): string {
+  // Allowed: alphanumerics, whitespace and `+-_.,:#` characters (Auth0 CIBA requirement)
+  const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9\s+\-_.,:#]/g, '');
+
   const actionVerbs: Record<ActionType, string> = {
     read: 'Read from',
     write: 'Post to',
@@ -77,9 +80,9 @@ export function getCIBABindingMessage(
   let message = `${verb} ${service.toUpperCase()} ${target}`;
 
   if (body && body.length > 0) {
-    // Truncate body for display
+    // Truncate body for display, sanitize for CIBA compliance
     const truncated = body.length > 50 ? body.substring(0, 47) + '...' : body;
-    message += `: "${truncated}"`;
+    message += ': ' + sanitize(truncated);
   }
 
   return message;

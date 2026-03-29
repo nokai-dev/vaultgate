@@ -18,7 +18,7 @@ const PORT = parseInt(process.env.VAULTGATE_PORT ?? '18792');
 const HOST = process.env.VAULTGATE_HOST ?? 'localhost';
 
 // Create VaultGate instance
-const vaultgate = createVaultGate();
+const vaultgate = createVaultGate({ demoMode: true });
 
 // Create Express app
 export const app = express();

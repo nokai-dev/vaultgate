@@ -13,7 +13,7 @@ describe('CIBA denial — full tokenVault.requestToken path', () => {
 
   beforeEach(() => {
     _resetActiveTokens();
-    vault = new TokenVault({
+    vault = new TokenVault({ demoMode: true,
       tokenTtlSeconds: 600,
       cibaTimeoutMs: 5000,
       cibaIntervalMs: 50,
