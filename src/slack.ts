@@ -74,9 +74,6 @@ export class SlackClient {
 
     console.log('\n┌─────────────────────────────────────────────────────────────┐');
     console.log('│  [SLACK] API CALL                                           │');
-
-    console.log('\n┌─────────────────────────────────────────────────────────────┐');
-    console.log('│  [SLACK] API CALL                                           │');
     console.log('├─────────────────────────────────────────────────────────────┤');
     console.log(`│  Method:   chat.postMessage                                   │`);
     console.log(`│  Token:    ${token.substring(0, 20)}...${token.slice(-10).padStart(10)}│`);
@@ -145,16 +142,16 @@ export class SlackClient {
     text: string,
     postAt: Date
   ): Promise<{ ok: boolean; scheduledMessageId: string }> {
+    if (this.demoMode) {
+      return { ok: true, scheduledMessageId: `demo_${Date.now()}` };
+    }
     const channel = target.startsWith('#') ? target.slice(1) : target;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (this.client.chat.scheduleMessage as any)({
-        token,
-        channel,
-        text,
-        post_at: Math.floor(postAt.getTime() / 1000).toString(),
-      });
-
+    const result = await this.client.chat.scheduleMessage({
+      token,
+      channel,
+      text,
+      post_at: Math.floor(postAt.getTime() / 1000).toString(),
+    });
     return {
       ok: result.ok ?? false,
       scheduledMessageId: result.scheduled_message_id ?? '',
