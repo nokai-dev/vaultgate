@@ -25,10 +25,9 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Run demo (60s timeout)
-        run: timeout 60 bash demo-try.sh || {
-          echo "Demo script exited with code $?";
-        }
+      - name: Run demo (60s timeout — verifies full CIBA walkthrough)
+        run: timeout 60 bash demo-try.sh
+        run: timeout 60 bash demo-try.sh
 
       - name: Check demo artifacts
         if: always()
