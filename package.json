@@ -12,7 +12,8 @@
     "try": "bash demo-try.sh",
     "try:ci": "bash demo-ci.sh",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:ci": "vitest run"
   },
   "keywords": [
     "auth0",

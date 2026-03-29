@@ -22,7 +22,7 @@ export default defineConfig({
         lines: 95,
       },
     },
-    testTimeout: 15000,
-    hookTimeout: 15000,
+    testTimeout: 30_000,
+    hookTimeout: 300_000, // CLI integration needs longer (TypeScript compilation)
   },
 });

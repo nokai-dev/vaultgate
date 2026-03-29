@@ -65,10 +65,11 @@ describe('vitest configuration', () => {
 
   it('testTimeout and hookTimeout are at least 10 seconds', () => {
     const content = readFileSync(`${REPO_ROOT}/vitest.config.ts`, 'utf8');
-    // Extract numeric value
-    const match = content.match(/testTimeout:\s*(\d+)/);
+    // Extract numeric value (supports numeric separators: 30_000)
+    const match = content.match(/testTimeout:\s*([\d_]+)/);
     expect(match).not.toBeNull();
-    expect(parseInt(match![1])).toBeGreaterThanOrEqual(10000);
+    // Remove underscores before parsing
+    expect(parseInt(match![1].replace(/_/g, ''))).toBeGreaterThanOrEqual(10000);
   });
 });
 
