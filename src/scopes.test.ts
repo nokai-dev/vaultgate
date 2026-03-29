@@ -75,7 +75,7 @@ describe('scopes', () => {
 
     it('returns correct message for write with body', () => {
       const msg = getCIBABindingMessage('slack', 'write', '#general', 'Hello world');
-      expect(msg).toBe('Post to SLACK #general: "Hello world"');
+      expect(msg).toBe('Post to SLACK #general: Hello world');
     });
 
     it('truncates long body to 50 chars', () => {

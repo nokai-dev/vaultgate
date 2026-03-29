@@ -112,6 +112,7 @@ describe('tokenVault', () => {
     it('getActiveTokens expires stale tokens', async () => {
       // Create a token vault with very short TTL
       const shortVault = new TokenVault({
+        demoMode: true,
         tokenTtlSeconds: 0, // Immediately expired
         cibaTimeoutMs: 1000,
         cibaIntervalMs: 100,
@@ -133,7 +134,7 @@ describe('tokenVault', () => {
 
       await expect(
         shortVault.requestToken('slack', 'write', '#general', 'Test')
-      ).rejects.toThrow('CIBA failed');
+      ).rejects.toThrow('CIBA timeout');
     });
 
     it('supports all four services', async () => {

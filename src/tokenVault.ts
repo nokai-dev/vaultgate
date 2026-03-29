@@ -56,17 +56,16 @@ export class TokenVault {
       cibaTimeoutMs: config.cibaTimeoutMs ?? 60000,
       cibaIntervalMs: config.cibaIntervalMs ?? 2000,
       cibaLoginHint: config.cibaLoginHint ?? process.env.CIBA_LOGIN_HINT ?? '',
-      demoMode: config.demoMode ?? false,
     };
 
-    // Determine demo mode: explicit flag, or implicit when credentials are missing or empty
+    // Determine demo mode: explicit flag, or implicit when credentials are missing
     const hasCredentials = !!(
       this.config.domain &&
       this.config.clientId &&
       this.config.clientSecret &&
       this.config.connectionId
     );
-    this.demoMode = this.config.demoMode ?? !hasCredentials;
+    this.demoMode = config.demoMode ?? !hasCredentials;
 
     if (!this.demoMode) {
       this.auth0 = new AuthenticationClient({

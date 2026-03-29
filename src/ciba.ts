@@ -253,7 +253,7 @@ export class CIBAHandler {
         const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
         const payload = Buffer.from(JSON.stringify({
           scope,
-          aud: 'vaultgate-demo',
+          aud: 'vaultgate',
           iat: Math.floor(Date.now() / 1000),
           exp: Math.floor(Date.now() / 1000) + 600,
           jti: `tok_${Date.now()}_${Math.random().toString(36).slice(2)}`,

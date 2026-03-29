@@ -31,7 +31,7 @@ describe('CIBA denial — full tokenVault.requestToken path', () => {
 
     await expect(
       vault.requestToken('slack', 'write', '#general', 'Hello')
-    ).rejects.toThrow('CIBA failed: User declined');
+    ).rejects.toThrow('User declined');
 
     // Restore
     (vault as any).cibaHandler.requestTokenWithCIBA = original;
@@ -46,7 +46,7 @@ describe('CIBA denial — full tokenVault.requestToken path', () => {
 
     await expect(
       vault.requestToken('github', 'write', 'repo', 'push')
-    ).rejects.toThrow('CIBA failed: Unknown error');
+    ).rejects.toThrow('CIBA failed with status: denied');
 
     (vault as any).cibaHandler.requestTokenWithCIBA = original;
   });

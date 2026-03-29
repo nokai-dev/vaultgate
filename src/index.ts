@@ -17,8 +17,17 @@ import { ActionRequest } from './types.js';
 const PORT = parseInt(process.env.VAULTGATE_PORT ?? '18792');
 const HOST = process.env.VAULTGATE_HOST ?? 'localhost';
 
-// Create VaultGate instance
-const vaultgate = createVaultGate({ demoMode: true });
+// Determine demo mode: true only if explicitly set to 'true' or no Auth0 credentials present
+// Note: .env is loaded via Vitest config (vitest.config.ts setupFiles) or dotenv CLI flag
+// Create VaultGate instance on each call so DEMO_MODE is re-evaluated per-request
+// This is important for tests where the env vars may change between requests
+function getVaultGate(): VaultGate {
+  // Demo mode: true if explicitly set, OR if no Auth0 credentials are configured
+  // (dotenv/config sets AUTH0_* vars at import time, so we only check VAULTGATE_DEMO_MODE)
+  const DEMO_MODE = process.env.VAULTGATE_DEMO_MODE === 'true' ||
+    (!process.env.AUTH0_DOMAIN && !process.env.AUTH0_CLIENT_ID);
+  return createVaultGate({ demoMode: DEMO_MODE });
+}
 
 // Create Express app
 export const app = express();
@@ -71,7 +80,7 @@ app.post('/action', async (req: Request, res: Response) => {
   }
 
   try {
-    const result = await vaultgate.executeAction(actionRequest);
+    const result = await getVaultGate().executeAction(actionRequest);
     return res.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -87,7 +96,7 @@ app.post('/action', async (req: Request, res: Response) => {
  * Get vault status and active tokens
  */
 app.get('/status', (_req: Request, res: Response) => {
-  const status = vaultgate.getStatus();
+  const status = getVaultGate().getStatus();
   return res.json(status);
 });
 
@@ -97,7 +106,7 @@ app.get('/status', (_req: Request, res: Response) => {
  */
 app.post('/revoke', async (_req: Request, res: Response) => {
   try {
-    const count = await vaultgate.revokeAll();
+    const count = await getVaultGate().revokeAll();
     return res.json({ success: true, revokedCount: count });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
