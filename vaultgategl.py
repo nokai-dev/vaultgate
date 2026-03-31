@@ -43,8 +43,7 @@ def node(label, icon, color=ACCENT, w=2.2, h=1.0):
 def badge(label, color=DANGER):
     txt = Text(label, font_size=14, color=BLACK, weight=BOLD)
     bg  = RoundedRectangle(corner_radius=0.08, width=3.5, height=0.45, fill_color=color, stroke_width=0)
-    bg.set_x(txt.get_x()).set_y(txt.get_y())
-    return VGroup(txt, bg)
+    return VGroup(bg, txt).move_to(txt)
 
 
 # ═════════════════════════════════════════════════════════════════════
@@ -67,8 +66,8 @@ class VaultGatePitch(Scene):
     # ═════════════════════════════════════════════════════════════════
     def scene_1_horror(self):
         # Title
-        t1 = heading("AI Agents Have the Keys", size=52).shift(UP * 1.5)
-        t2 = heading("to Your Kingdom", size=52).next_to(t1, DOWN, buff=0.1)
+        t1 = heading("AI Agents Have the Keys", size=64).shift(UP * 1.5)
+        t2 = heading("to Your Kingdom", size=64).next_to(t1, DOWN, buff=0.1)
         t  = VGroup(t1, t2).center()
         sub = body_text("...and they're already using them.", size=30, color=WARN).next_to(t, DOWN, buff=0.8)
         self.play(Write(t), run_time=1.0)
@@ -102,7 +101,7 @@ class VaultGatePitch(Scene):
             ])
         ]).arrange(DOWN, buff=0.1, aligned_edge=LEFT).shift(RIGHT * 2.5 + UP * 0.5)
 
-        quote = Text("\"Turns out alignment researchers\n aren't immune to misalignment.\"", font_size=18, color=WARN, slant=ITALIC).shift(RIGHT * 2.5 + DOWN * 1.8)
+        quote = Text("\"Turns out alignment researchers\\n aren't immune to misalignment.\"", font_size=18, color=WARN, slant=ITALIC).shift(RIGHT * 2.5 + DOWN * 1.8)
         attr  = body_text("— Summer Yue, Meta", size=14, color=MUTED).next_to(quote, DOWN, buff=0.1)
 
         self.play(FadeIn(inc1), run_time=0.3)
@@ -122,7 +121,7 @@ class VaultGatePitch(Scene):
         db_body = Rectangle(width=2, height=2.5, fill_color="#1C2128", stroke_color=AUTH0, stroke_width=2)
         db_top  = Ellipse(width=2, height=0.4, fill_color="#1C2128", stroke_color=AUTH0, stroke_width=2).next_to(db_body, UP, buff=-0.02)
         db_lbl  = body_text("Production DB", size=14, color=AUTH0).next_to(db_body, DOWN, buff=0.15)
-        db_stat = body_text("1,206 executives\n1,196 companies", size=13, color=MUTED).move_to(db_body)
+        db_stat = body_text("1,206 executives\\n1,196 companies", size=13, color=MUTED).move_to(db_body)
         db = VGroup(db_body, db_top, db_lbl, db_stat).shift(LEFT * 3)
 
         info2 = VGroup(*[
@@ -167,7 +166,7 @@ class VaultGatePitch(Scene):
 
         left_h  = heading("THE OLD QUESTION",  size=28, color=DANGER).shift(LEFT * 3.5 + UP * 2.5)
         left_x  = Text("✕", font_size=36, color=DANGER).next_to(left_h, LEFT, buff=0.2)
-        left_q  = body_text("WHAT can the\nagent access?", size=28).shift(LEFT * 3.5 + UP * 1.0)
+        left_q  = body_text("WHAT can the\\nagent access?", size=28).shift(LEFT * 3.5 + UP * 1.0)
         left_i  = VGroup(*[body_text(t, size=17, color=MUTED) for t in [
             "→ Scopes & permissions",
             "→ Decided once at consent",
@@ -178,7 +177,7 @@ class VaultGatePitch(Scene):
 
         right_h = heading("THE RIGHT QUESTION", size=28, color=SAFE).shift(RIGHT * 3.5 + UP * 2.5)
         right_x = Text("✓", font_size=36, color=SAFE).next_to(right_h, LEFT, buff=0.2)
-        right_q = body_text("WHEN can the\nagent act?", size=28).shift(RIGHT * 3.5 + UP * 1.0)
+        right_q = body_text("WHEN can the\\nagent act?", size=28).shift(RIGHT * 3.5 + UP * 1.0)
         right_i = VGroup(*[body_text(t, size=17, color=c) for t, c in [
             ("→ Every write, every time", SAFE),
             ("→ Decided at moment of action", MUTED),
@@ -259,7 +258,7 @@ class VaultGatePitch(Scene):
 
         # Notif on phone
         nb = RoundedRectangle(corner_radius=0.08, width=1.5, height=1.0, fill_color=AUTH0, stroke_width=0).move_to(phone_sc).shift(UP * 0.5)
-        nt = Text("Allow this\naction?", font_size=12, color=WHITE).move_to(nb)
+        nt = Text("Allow this\\naction?", font_size=12, color=WHITE).move_to(nb)
         notif = VGroup(nb, nt)
         self.play(FadeIn(notif), run_time=0.3)
         self.wait(0.5)
@@ -276,7 +275,7 @@ class VaultGatePitch(Scene):
         self.play(Write(title), run_time=0.3)
 
         # Terminal
-        term = card(5, 5, fill="#0D1117", stroke=BORDER).shift(LEFT * 2.5)
+        term = card(6, 5, fill="#0D1117", stroke=BORDER).shift(LEFT * 3)
         dots = VGroup(*[Circle(radius=0.05, fill_color=c) for c in [DANGER, WARN, SAFE]]).arrange(RIGHT, buff=0.1).next_to(term, UP, buff=0.15).align_to(term, LEFT).shift(RIGHT * 0.2)
         t_lbl = body_text("Terminal", size=13, color=MUTED).next_to(dots, LEFT, buff=0.1)
 

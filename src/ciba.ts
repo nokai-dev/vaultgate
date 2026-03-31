@@ -115,7 +115,7 @@ export class CIBAHandler {
     try {
       const authResponse = await this.auth0!.backchannel.authorize({
         userId: this.config.loginHint ?? '',
-        binding_message: bindingMessage,
+        binding_message: bindingMessage.trim(),
         scope: `openid ${scope}`,
         connection: connectionId,
         requested_expiry: Math.floor(this.config.timeoutMs / 1000).toString(),

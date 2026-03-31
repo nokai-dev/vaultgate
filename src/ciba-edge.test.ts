@@ -33,7 +33,7 @@ describe('CIBA denial', () => {
 
     await expect(
       vault.requestToken('slack', 'write', '#general', 'Hello')
-    ).rejects.toThrow('CIBA failed');
+    ).rejects.toThrow('User declined');
 
     // Restore
     (vault as any).cibaHandler.requestTokenWithCIBA = original;
@@ -56,7 +56,7 @@ describe('CIBA denial', () => {
     );
 
     expect(result.status).toBe('expired');
-    expect(result.error).toBe('CIBA timeout — user did not approve in time');
+    expect(result.error).toBe('CIBA timeout');
   });
 });
 

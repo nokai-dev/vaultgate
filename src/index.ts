@@ -9,6 +9,7 @@
  *   GET  /health    - Health check
  */
 
+import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { VaultGate, createVaultGate } from './vaultgate.js';

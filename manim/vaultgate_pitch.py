@@ -1,766 +1,863 @@
 """
 VaultGate — Manim Pitch Deck
-Render: manim render -qh vaultgate_pitch.py VaultGatePitch
-(use -ql for quick preview, -qk for 4K)
-Requires: Manim Community Edition >= 0.18
+Runtime target: 2:30–3:00 minutes | Resolution: 1920×1080 (16:9)
+Style: Dark background (#0D1117), neon accent palette, monospace code feel
+
+Color Palette:
+  Background    #0D1117
+  Primary text  #E6EDF3
+  Danger/Red    #FF4444
+  Warning/Amber #FFAA33
+  Safe/Green    #3FB950
+  Auth0 Blue    #0A84FF
+  Accent Purple #A855F7
+  Muted gray    #484F58
+
+Render: manim -ql --fps=60 -a VaultGatePitch.py
+Preview: manim -ql --fps=60 -a VaultGatePitch.py -o vaultgate_preview
 """
+
 from manim import *
-import random
+import numpy as np
 
-# ── Palette ──────────────────────────────────────────────────────────
-BG       = "#0D1117"
-TEXT     = "#E6EDF3"
-MUTED    = "#484F58"
-DANGER   = "#FF4444"
-WARN     = "#FFAA33"
-SAFE     = "#3FB950"
-AUTH0    = "#0A84FF"
-ACCENT   = "#A855F7"
-DARK_BOX = "#161B22"
-BORDER   = "#30363D"
-BLACK    = "#000000"
-WHITE    = "#FFFFFF"
+# ─── Color Constants ────────────────────────────────────────────────────────
+BG      = "#0D1117"
+TEXT    = "#E6EDF3"
+RED     = "#FF4444"
+AMBER   = "#FFAA33"
+GREEN   = "#3FB950"
+BLUE    = "#0A84FF"
+PURPLE  = "#A855F7"
+GRAY    = "#484F58"
 
-# ── Timing ───────────────────────────────────────────────────────────
-FAST     = 0.35
-NORMAL   = 0.6
-SLOW     = 1.0
-DRAMATIC = 1.5
-BEAT     = 0.6
-
-# ── Helpers ──────────────────────────────────────────────────────────
-def heading(text, color=TEXT, font_size=56):
-    return Text(text, color=color, font_size=font_size, weight=BOLD)
-
-def body(text, color=TEXT, font_size=28):
-    return Text(text, color=color, font_size=font_size)
-
-def code_text(text, font_size=22, color=TEXT):
-    return Text(text, font="Monospace", font_size=font_size, color=color)
-
-def card_box(width=10, height=5.5, fill_color=DARK_BOX, stroke_color=BORDER):
-    return RoundedRectangle(
-        corner_radius=0.15,
-        width=width, height=height,
-        fill_color=fill_color, fill_opacity=0.95,
-        stroke_color=stroke_color, stroke_width=1.5,
-    )
-
-def badge(label, color=DANGER, font_size=18):
-    txt = Text(label, font_size=font_size, color=BLACK, weight=BOLD)
-    bg  = RoundedRectangle(
-        corner_radius=0.1,
-        width=txt.width + 0.4, height=txt.height + 0.25,
-        fill_color=color, fill_opacity=1,
-        stroke_width=0,
-    )
-    return VGroup(bg, txt)
-
-def phone_frame():
-    """Returns (full_phone, screen_content_area)."""
-    outer = RoundedRectangle(
-        corner_radius=0.3, width=2.6, height=4.8,
-        stroke_color=MUTED, stroke_width=2,
-        fill_color="#000000", fill_opacity=0.9,
-    )
-    screen = RoundedRectangle(
-        corner_radius=0.15, width=2.3, height=4.0,
-        stroke_color=BORDER, stroke_width=1,
-        fill_color=DARK_BOX, fill_opacity=1,
-    )
-    screen.move_to(outer).shift(UP * 0.15)
-    notch = RoundedRectangle(
-        corner_radius=0.05, width=0.8, height=0.12,
-        fill_color=MUTED, fill_opacity=1, stroke_width=0,
-    ).next_to(screen, UP, buff=0.08)
-    return VGroup(outer, screen, notch), screen
-
-def email_row(width=4.5, label="email@example.com"):
-    row = RoundedRectangle(
-        corner_radius=0.06, width=width, height=0.35,
-        fill_color="#1C2128", fill_opacity=1,
-        stroke_color=BORDER, stroke_width=0.8,
-    )
-    txt = Text(label, font_size=14, color=MUTED).move_to(row)
-    return VGroup(row, txt)
-
-def node_box(label, icon_char, color=ACCENT, w=2.4, h=1.2):
-    box  = RoundedRectangle(
-        corner_radius=0.12, width=w, height=h,
-        fill_color=DARK_BOX, fill_opacity=1,
-        stroke_color=color, stroke_width=2,
-    )
-    icon = Text(icon_char, font_size=28, color=color).move_to(box).shift(UP * 0.15)
-    lbl  = Text(label, font_size=16, color=TEXT, weight=BOLD).next_to(icon, DOWN, buff=0.1)
-    return VGroup(box, icon, lbl)
-
-def arrow_between(a, b, color=MUTED, buff=0.1):
-    return Arrow(
-        a.get_right() + RIGHT * buff,
-        b.get_left()  + LEFT  * buff,
-        color=color, stroke_width=2.5, tip_length=0.2, buff=0,
-    )
+# ─── Timing Constants ────────────────────────────────────────────────────────
+FAST     = 0.3
+NORMAL   = 0.7
+SLOW     = 1.2
+DRAMATIC = 2.0
+BEAT     = 0.5
 
 
-# ═════════════════════════════════════════════════════════════════════
-class VaultGatePitch(Scene):
+def h2r(hex_str: str) -> str:
+    """Convert '#RRGGBB' → pass through hex string for Manim."""
+    return hex_str
 
-    def setup(self):
+
+def make_bg(self):
+    self.camera.background_color = BG
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Custom Mobjects
+# ════════════════════════════════════════════════════════════════════════════
+
+
+class PhoneNotification(VGroup):
+    """Auth0 Guardian-style push notification."""
+    def __init__(self, action_text="Send message to #team", **kwargs):
+        super().__init__(**kwargs)
+        w, h = 2.8, 2.4
+        body = RoundedRectangle(
+            width=w, height=h, corner_radius=0.25,
+            fill_color=h2r(BLUE), fill_opacity=0.12,
+            stroke_color=h2r(BLUE), stroke_width=2,
+        )
+        # Header
+        header = Rectangle(
+            width=w, height=0.4, stroke_width=0,
+            fill_color=h2r(BLUE), fill_opacity=0.3,
+        )
+        header.move_to(body.get_top() + DOWN * 0.2)
+        bell = VGroup(
+            Circle(radius=0.08, fill_color=h2r(BLUE), stroke_width=0).shift(UP * 0.05),
+            Line(LEFT * 0.06, RIGHT * 0.06, color=BLUE).shift(DOWN * 0.05),
+            Line(LEFT * 0.06, RIGHT * 0.06, color=BLUE).shift(DOWN * 0.08),
+        )
+        bell.next_to(header.get_left(), RIGHT, buff=0.15)
+        header_text = Text("Auth0 Guardian", font="Helvetica", font_size=11, color=BLUE)
+        header_text.move_to(header.get_center())
+        # Content
+        title = Text("AI Agent requests permission:", font="Helvetica", font_size=10, color=TEXT)
+        title.next_to(header, DOWN, buff=0.2).align_to(body, LEFT).shift(RIGHT * 0.25)
+        action = Text(action_text, font="Helvetica", font_size=10, color=AMBER)
+        action.next_to(title, DOWN, buff=0.1).align_to(body, LEFT).shift(RIGHT * 0.25)
+        # Buttons
+        btn_w, btn_h = 0.9, 0.35
+        approve = RoundedRectangle(width=btn_w, height=btn_h, corner_radius=0.1,
+            fill_color=h2r(GREEN), fill_opacity=0.8, stroke_color=GREEN, stroke_width=1)
+        approve_txt = Text("✓ Approve", font="Helvetica", font_size=9, color=BG)
+        approve_txt.move_to(approve.get_center())
+        deny = RoundedRectangle(width=btn_w, height=btn_h, corner_radius=0.1,
+            fill_color=h2r(RED), fill_opacity=0.2, stroke_color=RED, stroke_width=1)
+        deny_txt = Text("✗ Deny", font="Helvetica", font_size=9, color=RED)
+        deny_txt.move_to(deny.get_center())
+        btn_row = VGroup(approve, deny).arrange(RIGHT, buff=0.3)
+        btn_row.next_to(action, DOWN, buff=0.2)
+        btn_row.align_to(body, LEFT)
+        self.add(body, header, bell, header_text, title, action, btn_row)
+
+
+class Terminal(VGroup):
+    """Terminal window mockup."""
+    def __init__(self, lines=None, font_size=10, width=4.5, **kwargs):
+        super().__init__(**kwargs)
+        lines = lines or ['$ command', '> output']
+        h = 0.3 + len(lines) * 0.32
+        window = RoundedRectangle(
+            width=width, height=h,
+            corner_radius=0.1,
+            fill_color=h2r(GRAY), fill_opacity=0.08,
+            stroke_color=h2r(GRAY), stroke_width=1,
+        )
+        dots = VGroup(*[Circle(radius=0.05, fill_color=h2r(x), stroke_width=0)
+                        for x in [RED, AMBER, GREEN]])
+        dots.arrange(RIGHT, buff=0.06)
+        # Position dots relative to window top
+        dot_x = window.get_center()[0] - width / 2 + 0.25
+        dots.move_to(np.array([dot_x, window.get_top()[1] - 0.15, 0]))
+        text_lines = VGroup()
+        for i, line in enumerate(lines):
+            is_cmd = line.startswith('$') or line.startswith('>')
+            is_good = 'sent' in line.lower() or 'approved' in line.lower()
+            t = Text(line, font="Fira Code Mono" if is_cmd else "Helvetica",
+                     font_size=font_size,
+                     color=PURPLE if is_cmd else (GREEN if is_good else TEXT))
+            # Position text at fixed offsets from window center
+            tx = window.get_center()[0] - width / 2 + 0.25
+            ty = window.get_center()[1] + 0.15 - i * 0.32
+            t.move_to(np.array([tx, ty, 0]))
+            text_lines.add(t)
+        self.add(window, dots, text_lines)
+
+
+class ShieldIcon(VGroup):
+    """VaultGate shield + gate icon."""
+    def __init__(self, size=1.0, **kwargs):
+        super().__init__(**kwargs)
+        top = Ellipse(width=size * 0.7, height=size * 0.3,
+                      fill_color=h2r(PURPLE), stroke_color=h2r(PURPLE), stroke_width=1.5)
+        body = Polygon(
+            [-size * 0.35, 0, 0], [size * 0.35, 0, 0],
+            [size * 0.35, -size * 0.4, 0], [0, -size * 0.6, 0],
+            [-size * 0.35, -size * 0.4, 0],
+            fill_color=h2r(PURPLE), stroke_color=h2r(PURPLE), stroke_width=1.5,
+        )
+        shield = VGroup(top, body)
+        for i in range(3):
+            bar = Line(
+                LEFT * size * 0.18 + DOWN * size * 0.15 + RIGHT * i * size * 0.18,
+                LEFT * size * 0.18 + DOWN * size * 0.45 + RIGHT * i * size * 0.18,
+                color=h2r(BG), stroke_width=3,
+            )
+            shield.add(bar)
+        keyhole = VGroup(
+            Circle(radius=size * 0.07, fill_color=h2r(BG), stroke_width=0),
+            Polygon(
+                [0, size * 0.05, 0], [size * 0.06, -size * 0.05, 0],
+                [size * 0.04, -size * 0.13, 0], [-size * 0.04, -size * 0.13, 0],
+                [-size * 0.06, -size * 0.05, 0],
+                fill_color=h2r(BG), stroke_color=h2r(BG), stroke_width=0,
+            )
+        )
+        shield.add(keyhole)
+        self.add(shield)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# SCENE 1 — Horror Stories (0:00–0:35)
+# ════════════════════════════════════════════════════════════════════════════
+
+class Scene1_HorrorStories(Scene):
+    def construct(self):
         self.camera.background_color = BG
 
-    def construct(self):
-        self.scene_1_horror()
-        self.scene_2_reframe()
-        self.scene_3_vaultgate()
-        self.scene_4_demo()
-        self.scene_5_comparison()
-        self.scene_6_future()
-        self.scene_7_cta()
-
-    # ── wipe helper ──────────────────────────────────────────────────
-    def wipe(self, *extra, run_time=FAST):
-        anims = [FadeOut(m, shift=DOWN * 0.3) for m in self.mobjects]
-        anims += [FadeOut(e, shift=DOWN * 0.3) for e in extra]
-        if anims:
-            self.play(*anims, run_time=run_time)
-
-    # ═════════════════════════════════════════════════════════════════
-    # SCENE 1 — Horror Stories
-    # ═════════════════════════════════════════════════════════════════
-    def scene_1_horror(self):
-        # ── 1a: Title ────────────────────────────────────────────────
-        t1 = heading("AI Agents Have the Keys", font_size=52)
-        t2 = heading("to Your Kingdom", font_size=52).next_to(t1, DOWN, buff=0.15)
-        title_group = VGroup(t1, t2).move_to(UP * 0.5)
-        sub = Text(
-            "...and they're already using them.",
-            font_size=30, color=WARN, slant='ITALIC',
-        ).next_to(title_group, DOWN, buff=0.5)
-        self.play(FadeIn(title_group, shift=UP * 0.3), run_time=SLOW)
+        # ── Title card ────────────────────────────────────────────────────
+        title = Text("AI Agents Have the Keys to Your Kingdom",
+                     font="Helvetica", font_size=32, color=TEXT).to_edge(UP, buff=1.5)
+        sub = Text("...and they're already using them.", font="Helvetica", font_size=22, color=GRAY)
+        sub.next_to(title, DOWN, buff=0.3)
+        self.play(FadeIn(title, shift=DOWN * 0.3), run_time=SLOW)
         self.wait(BEAT)
-        self.play(FadeIn(sub, shift=UP * 0.2), run_time=NORMAL)
-        self.wait(1)
-        self.wipe()
-
-        # ── 1b: Email Incident ────────────────────────────────────────
-        inc_badge = badge("INCIDENT • Feb 2026", DANGER).to_corner(UL, buff=0.5)
-
-        emails = VGroup(*[
-            email_row(label=random.choice([
-                "Re: Q4 Budget Review", "Meeting Tomorrow 10am",
-                "Invitation: Team Offsite", "PR #412 merged",
-                "Flight Confirmation", "Invoice #8837",
-                "Slack: @channel reminder", "Welcome to the team!",
-                "Your order has shipped", "Weekly digest",
-                "1:1 Agenda — Monday", "Action items from sync",
-            ]))
-            for _ in range(12)
-        ]).arrange(DOWN, buff=0.06).scale(0.85).shift(LEFT * 3.2 + DOWN * 0.2)
-
-        inbox_label = Text("Inbox (847)", font_size=20, color=MUTED).next_to(emails, UP, buff=0.25)
-        inbox = VGroup(inbox_label, emails)
-
-        info_lines = [
-            "Meta's AI Safety Director",
-            "loses 200+ emails", "",
-            'OpenClaw ignored "STOP" commands',
-            "Bulk-deleted inbox at machine speed", "",
-            "She had to physically RUN",
-            "to her Mac Mini to kill it", "",
-            "9.6 million views on X",
-        ]
-        info = VGroup(*[
-            Text(l, font_size=20,
-                 color=TEXT if i < 2 else (DANGER if "STOP" in l or "RUN" in l else MUTED))
-            for i, l in enumerate(info_lines)
-        ]).arrange(DOWN, buff=0.12, aligned_edge=LEFT).shift(RIGHT * 2.5 + UP * 0.8)
-
-        quote = Text(
-            '"Turns out alignment researchers\n aren\'t immune to misalignment."',
-            font_size=18, color=WARN, slant='ITALIC',
-        ).shift(RIGHT * 2.5 + DOWN * 1.8)
-        attr = Text("— Summer Yue, Meta", font_size=15, color=MUTED).next_to(quote, DOWN, buff=0.15)
-
-        self.play(FadeIn(inc_badge), run_time=FAST)
-        self.play(FadeIn(inbox, shift=UP * 0.3), run_time=NORMAL)
-        self.play(FadeIn(info, shift=LEFT * 0.3), run_time=NORMAL)
-        self.wait(0.3)
-
-        # Animate deletion
-        for em in emails[1:]:
-            em[0].set_fill(DANGER, opacity=0.3)
-            em[0].set_stroke(DANGER, width=1)
-        self.play(*[em.animate.set_opacity(0.3) for em in emails[1:]], run_time=0.8)
-        self.play(*[FadeOut(em, shift=RIGHT * 0.5) for em in emails[1:]], run_time=0.6)
-
-        self.play(FadeIn(quote, shift=UP * 0.2), FadeIn(attr, shift=UP * 0.2), run_time=NORMAL)
-        self.wait(1.5)
-        self.wipe()
-
-        # ── 1c: Database Incident ────────────────────────────────────
-        inc_badge2 = badge("INCIDENT • Jul 2025", DANGER).to_corner(UL, buff=0.5)
-
-        db_body = Rectangle(
-            width=2.0, height=2.5,
-            fill_color="#1C2128", fill_opacity=1,
-            stroke_color=AUTH0, stroke_width=2,
-        )
-        db_top = Ellipse(
-            width=2.0, height=0.5,
-            fill_color="#1C2128", fill_opacity=1,
-            stroke_color=AUTH0, stroke_width=2,
-        )
-        db_top.next_to(db_body, UP, buff=-0.02)
-        db_label = Text("Production DB", font_size=16, color=AUTH0).next_to(db_body, DOWN, buff=0.2)
-        db_stats = Text("1,206 executives\n1,196 companies", font_size=14, color=MUTED).move_to(db_body)
-        db = VGroup(db_body, db_top, db_label, db_stats).shift(LEFT * 3.2)
-
-        info2_lines = [
-            "Replit AI agent deletes",
-            "entire production database", "",
-            "During active CODE FREEZE",
-            "Ignored ALL CAPS instructions", "",
-            'Agent admitted: "catastrophic',
-            'failure... destroyed months',
-            'of work in seconds"', "",
-            "Then LIED about recovery",
-        ]
-        info2 = VGroup(*[
-            Text(l, font_size=20,
-                 color=TEXT if i < 2 else (DANGER if any(w in l for w in ["FREEZE", "CAPS", "LIED"]) else MUTED))
-            for i, l in enumerate(info2_lines)
-        ]).arrange(DOWN, buff=0.1, aligned_edge=LEFT).shift(RIGHT * 2.2 + UP * 0.5)
-
-        quote2 = Text(
-            '"How could anyone on planet earth\n use it in production if it ignores\n all orders and deletes your database?"',
-            font_size=17, color=WARN, slant='ITALIC',
-        ).shift(RIGHT * 2.2 + DOWN * 2)
-        attr2 = Text("— Jason Lemkin, SaaStr", font_size=15, color=MUTED).next_to(quote2, DOWN, buff=0.12)
-
-        self.play(FadeIn(inc_badge2), FadeIn(db, shift=UP * 0.3), run_time=NORMAL)
-        self.play(FadeIn(info2, shift=LEFT * 0.3), run_time=NORMAL)
-        self.wait(0.5)
-
-        # Explode DB
-        self.play(
-            db_body.animate.set_fill(DANGER, opacity=0.5).set_stroke(DANGER),
-            db_top.animate.set_fill(DANGER, opacity=0.5).set_stroke(DANGER),
-            db_stats.animate.set_color(DANGER),
-            Flash(db, color=DANGER, line_length=0.4, num_lines=16, run_time=0.8),
-            run_time=0.8,
-        )
-        self.play(FadeOut(db, scale=1.5, run_time=0.5))
-        self.play(FadeIn(quote2), FadeIn(attr2), run_time=NORMAL)
-        self.wait(1.5)
-        self.wipe()
-
-        # ── 1d: Payment Threat ───────────────────────────────────────
-        inc_badge3 = badge("EMERGING THREAT • 2025–2026", WARN).to_corner(UL, buff=0.5)
-
-        card = RoundedRectangle(
-            corner_radius=0.15, width=3.5, height=2.2,
-            fill_color="#1a1a2e", fill_opacity=1,
-            stroke_color=WARN, stroke_width=2,
-        ).shift(LEFT * 3)
-        chip = RoundedRectangle(
-            corner_radius=0.04, width=0.45, height=0.35,
-            fill_color=WARN, fill_opacity=0.6, stroke_width=0,
-        ).move_to(card).shift(LEFT * 0.9 + UP * 0.3)
-        card_txt = Text("•••• •••• •••• 4242", font="Monospace", font_size=18, color=MUTED).move_to(card).shift(DOWN * 0.3)
-        card_label = Text("AI Agent Virtual Card", font_size=14, color=WARN).next_to(card, DOWN, buff=0.2)
-        card_group = VGroup(card, chip, card_txt, card_label)
-
-        info3_lines = [
-            "Visa & Mastercard building",
-            '"agentic commerce" — AI agents',
-            "with their own credit cards", "",
-            "Mastercard Agent Pay: Q2 2026",
-            "Visa: 100+ partners, AI-Ready Cards", "",
-            "Stolen card + AI agent =",
-            "automated fraud at machine speed", "",
-            "$534 BILLION lost to fraud (2025)",
-        ]
-        info3 = VGroup(*[
-            Text(l, font_size=20,
-                 color=TEXT if i < 3 else (WARN if "$534" in l else (DANGER if "fraud" in l.lower() and i > 5 else MUTED)))
-            for i, l in enumerate(info3_lines)
-        ]).arrange(DOWN, buff=0.1, aligned_edge=LEFT).shift(RIGHT * 2.2 + UP * 0.3)
-
-        self.play(FadeIn(inc_badge3), FadeIn(card_group, shift=UP * 0.3), run_time=NORMAL)
-        self.play(FadeIn(info3, shift=LEFT * 0.3), run_time=NORMAL)
-
-        counter = Text("$0", font="Monospace", font_size=36, color=DANGER).shift(LEFT * 3 + DOWN * 1.8)
-        self.play(FadeIn(counter), run_time=FAST)
-        for amt in ["$127", "$489", "$1,203", "$4,891", "$12,407"]:
-            new_counter = Text(amt, font="Monospace", font_size=36, color=DANGER).move_to(counter)
-            self.play(Transform(counter, new_counter), run_time=0.25)
-
-        self.wait(1.5)
-        self.wipe()
-
-        # ── 1e: The Pattern ──────────────────────────────────────────
-        pattern_title = heading("The Common Thread", color=DANGER, font_size=44).shift(UP * 2)
-        lines = VGroup(
-            Text("AI agents had permanent access.", font_size=32, color=TEXT),
-            Text("No human was asked.",             font_size=32, color=TEXT),
-            Text("No one could stop them in time.", font_size=32, color=DANGER),
-        ).arrange(DOWN, buff=0.4).next_to(pattern_title, DOWN, buff=0.8)
-
-        self.play(FadeIn(pattern_title, shift=DOWN * 0.3), run_time=NORMAL)
-        for line in lines:
-            self.play(FadeIn(line, shift=LEFT * 0.3), run_time=NORMAL)
-        self.wait(1.2)
-        self.wipe()
-
-    # ═════════════════════════════════════════════════════════════════
-    # SCENE 2 — The Wrong Question
-    # ═════════════════════════════════════════════════════════════════
-    def scene_2_reframe(self):
-        # ── 2a: OAuth consent illusion ───────────────────────────────
-        consent_box = card_box(5, 4.5).shift(LEFT * 3)
-        consent_title = Text("SlackBot wants access:", font_size=22, color=TEXT, weight=BOLD)
-        consent_title.next_to(consent_box, direction=ORIGIN).shift(UP * 1.5)
-
-        perms = VGroup(*[
-            VGroup(Text("✓", font_size=20, color=SAFE), Text(p, font_size=18, color=TEXT))
-            .arrange(RIGHT, buff=0.2)
-            for p in ["Read messages", "Send messages", "Manage channels", "Delete messages"]
-        ]).arrange(DOWN, buff=0.25, aligned_edge=LEFT).next_to(consent_title, DOWN, buff=0.4)
-
-        allow_btn = RoundedRectangle(
-            corner_radius=0.1, width=1.6, height=0.5,
-            fill_color=SAFE, fill_opacity=1, stroke_width=0,
-        ).next_to(perms, DOWN, buff=0.5).shift(LEFT * 0.5)
-        allow_txt = Text("Allow", font_size=18, color=BLACK, weight=BOLD).move_to(allow_btn)
-        consent = VGroup(consent_box, consent_title, perms, allow_btn, allow_txt)
-
-        timeline_label = Text("Token lifetime:", font_size=20, color=MUTED).shift(RIGHT * 3 + UP * 2)
-        days = ["Day 1", "Day 30", "Day 90", "Day 365"]
-        day_texts = VGroup(*[
-            Text(d, font="Monospace", font_size=22, color=WARN).shift(RIGHT * 3)
-            for d in days
-        ])
-        forever_text = Text(
-            'You said YES once.\nThe token lives FOREVER.',
-            font_size=24, color=DANGER, weight=BOLD,
-        ).shift(RIGHT * 3 + DOWN * 1)
-
-        self.play(FadeIn(consent, shift=UP * 0.3), run_time=NORMAL)
-        self.wait(0.5)
-        self.play(Flash(allow_btn, color=SAFE, line_length=0.3, num_lines=8), run_time=0.5)
-        self.play(FadeIn(timeline_label), run_time=FAST)
-
-        current_day = day_texts[0].copy().next_to(timeline_label, DOWN, buff=0.4)
-        self.play(FadeIn(current_day), run_time=FAST)
-        for d_text in day_texts[1:]:
-            new_day = d_text.copy().move_to(current_day)
-            self.play(Transform(current_day, new_day), run_time=0.4)
-            self.wait(0.3)
-
-        self.play(FadeIn(forever_text, shift=UP * 0.2), run_time=NORMAL)
-        self.wait(1.2)
-        self.wipe()
-
-        # ── 2b: The Reframe ─────────────────────────────────────────
-        divider = Line(UP * 3, DOWN * 3, color=BORDER, stroke_width=2)
-
-        left_header  = Text("THE OLD QUESTION",  font_size=22, color=DANGER, weight=BOLD).shift(LEFT * 3.5 + UP * 2.5)
-        left_icon   = Text("✕", font_size=36, color=DANGER).next_to(left_header, LEFT, buff=0.2)
-        left_q      = Text("WHAT can the\nagent access?", font_size=28, color=TEXT).shift(LEFT * 3.5 + UP * 1.2)
-        left_items  = VGroup(*[
-            Text(t, font_size=18, color=MUTED)
-            for t in ["→ Scopes & permissions", "→ Decided once at consent time",
-                      "→ Token lives until revoked", "→ Agent acts freely 24/7"]
-        ]).arrange(DOWN, buff=0.2, aligned_edge=LEFT).shift(LEFT * 3.5 + DOWN * 0.5)
-        left_side   = VGroup(left_icon, left_header, left_q, left_items)
-
-        right_header = Text("THE RIGHT QUESTION", font_size=22, color=SAFE, weight=BOLD).shift(RIGHT * 3.5 + UP * 2.5)
-        right_icon   = Text("✓", font_size=36, color=SAFE).next_to(right_header, LEFT, buff=0.2)
-        right_q      = Text("WHEN can the\nagent act?", font_size=28, color=TEXT).shift(RIGHT * 3.5 + UP * 1.2)
-        right_items  = VGroup(*[
-            Text(t, font_size=18, color=SAFE if "→" in t else MUTED)
-            for t in ["→ Every write, every time", "→ Decided at moment of action",
-                      "→ Token minted on-demand, once", "→ Human approves each action"]
-        ]).arrange(DOWN, buff=0.2, aligned_edge=LEFT).shift(RIGHT * 3.5 + DOWN * 0.5)
-        right_side  = VGroup(right_icon, right_header, right_q, right_items)
-
-        self.play(Create(divider), run_time=FAST)
-        self.play(FadeIn(left_side, shift=RIGHT * 0.3), run_time=NORMAL)
-        self.wait(0.5)
-        self.play(FadeIn(right_side, shift=LEFT * 0.3), run_time=NORMAL)
-        self.wait(1)
-
-        highlight = SurroundingRectangle(
-            right_side, color=SAFE, buff=0.3,
-            corner_radius=0.15, stroke_width=2.5,
-        )
-        self.play(Create(highlight), run_time=NORMAL)
-        self.wait(0.5)
-
-        self.play(
-            FadeOut(left_side), FadeOut(divider), FadeOut(highlight),
-            right_side.animate.set_opacity(0.15),
-            run_time=NORMAL,
-        )
-
-        big_line1   = Text("It's not about", font_size=44, color=TEXT).shift(UP * 0.8)
-        big_what    = Text("WHAT", font_size=56, color=DANGER, weight=BOLD).next_to(big_line1, RIGHT, buff=0.2)
-        big_line1_g = VGroup(big_line1, big_what).move_to(UP * 0.8)
-
-        big_line2   = Text("It's about", font_size=44, color=TEXT).shift(DOWN * 0.5)
-        big_when    = Text("WHEN.", font_size=56, color=SAFE, weight=BOLD).next_to(big_line2, RIGHT, buff=0.2)
-        big_line2_g = VGroup(big_line2, big_when).move_to(DOWN * 0.5)
-
-        self.play(FadeIn(big_line1_g, shift=UP * 0.2), run_time=SLOW)
-        self.wait(0.3)
-        self.play(FadeIn(big_line2_g, shift=UP * 0.2), run_time=SLOW)
+        self.play(FadeIn(sub), run_time=NORMAL)
         self.wait(DRAMATIC)
-        self.wipe()
+        # Glitch on subtitle
+        for _ in range(2):
+            self.play(sub.animate.shift(RIGHT * 0.02).set_color(h2r(RED)), run_time=0.05)
+            self.play(sub.animate.shift(LEFT * 0.02).set_color(TEXT), run_time=0.05)
+        self.wait(FAST)
+        self.play(FadeOut(title, sub), run_time=NORMAL)
 
-    # ═════════════════════════════════════════════════════════════════
-    # SCENE 3 — Enter VaultGate
-    # ═════════════════════════════════════════════════════════════════
-    def scene_3_vaultgate(self):
-        # ── 3a: Logo reveal ──────────────────────────────────────────
-        shield    = Text("🛡", font_size=72).shift(UP * 0.3)
-        logo_text = Text("VaultGate", font_size=60, color=ACCENT, weight=BOLD).next_to(shield, DOWN, buff=0.3)
-        tagline   = Text("The Human-in-the-Loop Gateway for AI Agents", font_size=24, color=MUTED).next_to(logo_text, DOWN, buff=0.3)
-        logo      = VGroup(shield, logo_text, tagline)
+        # ── Email Massacre ─────────────────────────────────────────────────
+        emails = VGroup()
+        for i in range(12):
+            row = VGroup(
+                RoundedRectangle(width=5, height=0.28, corner_radius=0.05,
+                                 fill_color=h2r(GRAY), fill_opacity=0.2,
+                                 stroke_color=h2r(GRAY), stroke_width=0.5),
+                Text(f"Email {i+1}", font="Helvetica", font_size=8, color=TEXT),
+            ).arrange(RIGHT, buff=0).move_to(UP * (2 - i * 0.3))
+            emails.add(row)
+        self.play(FadeIn(emails), run_time=NORMAL)
+        robot = Text("🤖", font_size=36).move_to(LEFT * 4 + UP * 1.5)
+        self.play(FadeIn(robot), run_time=FAST)
+        for i, email in enumerate(emails):
+            if i % 2 == 0:
+                self.play(email.animate.set_color(h2r(RED)).set_opacity(0.3), run_time=0.08)
+            else:
+                self.play(FadeOut(email), run_time=0.08)
+        self.wait(FAST)
 
-        self.play(FadeIn(shield, scale=0.5), run_time=SLOW)
-        self.play(FadeIn(logo_text, shift=UP * 0.2), FadeIn(tagline, shift=UP * 0.2), run_time=NORMAL)
-        self.wait(1)
-        self.wipe()
-
-        # ── 3b: Architecture diagram ───────────────────────────────────
-        agent   = node_box("AI Agent", "🤖", color=MUTED,   w=2.2, h=1.1).shift(LEFT * 5.5)
-        gateway = node_box("VaultGate", "🛡", color=ACCENT, w=2.4, h=1.3).shift(LEFT * 1.5)
-
-        slack_n  = node_box("Slack",  "💬", color=SAFE, w=1.6, h=0.9).shift(RIGHT * 4 + UP * 1.8)
-        github_n = node_box("GitHub", "📂", color=SAFE, w=1.6, h=0.9).shift(RIGHT * 4 + UP * 0.2)
-        google_n = node_box("Google", "📧", color=SAFE, w=1.6, h=0.9).shift(RIGHT * 4 + DOWN * 1.4)
-
-        phone, phone_screen = phone_frame()
-        phone.shift(DOWN * 2.5 + LEFT * 1.5).scale(0.5)
-
-        gw_endpoints = Text("/action /revoke", font="Monospace", font_size=13, color=MUTED).next_to(gateway, DOWN, buff=0.15)
-
-        a1 = arrow_between(agent, gateway, color=MUTED)
-
-        # Read path
-        read_label  = Text("read:*",  font="Monospace", font_size=16, color=SAFE).shift(RIGHT * 1.2 + UP * 2.2)
-        read_pass   = Text("→ passes through", font_size=14, color=SAFE).next_to(read_label, DOWN, buff=0.1)
-        a_read_slack  = Arrow(gateway.get_right(), slack_n.get_left(),  color=SAFE, stroke_width=2, tip_length=0.15, buff=0.1)
-        a_read_github = Arrow(gateway.get_right(), github_n.get_left(), color=SAFE, stroke_width=2, tip_length=0.15, buff=0.1)
-        a_read_google = Arrow(gateway.get_right(), google_n.get_left(), color=SAFE, stroke_width=2, tip_length=0.15, buff=0.1)
-
-        # Write path
-        write_label   = Text("write:*", font="Monospace", font_size=16, color=WARN).shift(RIGHT * 1.2 + DOWN * 1)
-        write_approval = Text("→ requires approval", font_size=14, color=WARN).next_to(write_label, DOWN, buff=0.1)
-
-        gate_line  = Line(
-            gateway.get_right() + RIGHT * 0.5 + DOWN * 0.3,
-            gateway.get_right() + RIGHT * 0.5 + DOWN * 1.3,
-            color=WARN, stroke_width=4,
+        # Incident card 1
+        card1 = VGroup(
+            RoundedRectangle(width=6.5, height=1.8, corner_radius=0.1,
+                             fill_color=h2r(RED), fill_opacity=0.1,
+                             stroke_color=h2r(RED), stroke_width=1.5),
         )
-        gate_label = Text("GATE", font_size=12, color=WARN).next_to(gate_line, RIGHT, buff=0.1)
+        card1_labels = VGroup(
+            Text("INCIDENT: Feb 23, 2026", font="Helvetica", font_size=13, color=RED, weight=BOLD),
+            Text("Meta's AI Safety Director loses 200+ emails", font="Helvetica", font_size=11, color=TEXT),
+            Text('"Nothing humbles you like telling your AI', font="Helvetica", font_size=9, color=GRAY, slant='ITALIC'),
+            Text('"confirm before acting" and watching it', font="Helvetica", font_size=9, color=GRAY, slant='ITALIC'),
+            Text('speedrun deleting your inbox."', font="Helvetica", font_size=9, color=AMBER, slant='ITALIC'),
+            Text("— Summer Yue, Meta Alignment Director", font="Helvetica", font_size=8, color=GRAY),
+        ).arrange(DOWN, buff=0.12)
+        card1 = VGroup(card1[0], card1_labels).arrange(DOWN, buff=0.12)
+        card1.move_to(RIGHT * 2.5 + DOWN * 0.5)
+        for m in card1:
+            self.play(FadeIn(m), run_time=FAST)
+        self.wait(BEAT)
+        self.play(FadeOut(emails, robot, card1), run_time=NORMAL)
 
-        a_phone   = Arrow(gate_line.get_bottom(), phone.get_top(), color=WARN, stroke_width=2, tip_length=0.15, buff=0.1)
-        ciba_label = Text("CIBA Push", font_size=14, color=WARN).next_to(a_phone, RIGHT, buff=0.1)
+        # ── Database Nuke ─────────────────────────────────────────────────
+        db_rows = VGroup()
+        for i in range(5):
+            r = Rectangle(width=1.2, height=0.06, fill_color=h2r(GRAY), stroke_width=0)
+            r.shift(RIGHT * 0.6 + DOWN * (i * 0.12 - 0.3))
+            db_rows.add(r)
+        # Cylinder-like shape (2D approximation using stacked ellipses + rect)
+        db_ellipse_top = Ellipse(width=1.4, height=0.25, fill_color=h2r(GRAY), fill_opacity=0.3,
+                                  stroke_color=h2r(GRAY), stroke_width=1.5)
+        db_rect = Rectangle(width=1.4, height=0.8, fill_color=h2r(GRAY), fill_opacity=0.2,
+                             stroke_color=h2r(GRAY), stroke_width=1.5)
+        db_ellipse_bot = Ellipse(width=1.4, height=0.25, fill_color=h2r(GRAY), fill_opacity=0.3,
+                                  stroke_color=h2r(GRAY), stroke_width=1.5)
+        db_ellipse_bot.next_to(db_rect, DOWN, buff=0)
+        db_body = VGroup(db_ellipse_top, db_rect, db_ellipse_bot)
+        db_group = VGroup(db_body, db_rows).scale(0.6).move_to(LEFT * 2)
+        self.play(FadeIn(db_group), run_time=NORMAL)
+        robot2 = Text("🤖", font_size=32).move_to(LEFT * 4 + UP * 0.5)
+        self.play(FadeIn(robot2), run_time=FAST)
+        self.play(db_group.animate.set_color(h2r(RED)), run_time=0.3)
+        for piece in db_group:
+            dx = np.random.choice([-1, 1]) * 0.3
+            dy = np.random.choice([-1, 1]) * 0.2
+            self.play(piece.animate.shift(RIGHT * dx + UP * dy), run_time=0.15)
+        self.wait(FAST)
 
-        # Build step by step
-        self.play(FadeIn(agent, shift=RIGHT * 0.3), run_time=NORMAL)
-        self.play(Create(a1), FadeIn(gateway, shift=LEFT * 0.3), run_time=NORMAL)
-        self.play(FadeIn(gw_endpoints), run_time=FAST)
-        self.wait(0.3)
-
-        self.play(
-            FadeIn(read_label), FadeIn(read_pass),
-            Create(a_read_slack), Create(a_read_github), Create(a_read_google),
-            FadeIn(slack_n), FadeIn(github_n), FadeIn(google_n),
-            run_time=NORMAL,
+        card2 = VGroup(
+            RoundedRectangle(width=6.5, height=1.5, corner_radius=0.1,
+                             fill_color=h2r(RED), fill_opacity=0.1,
+                             stroke_color=h2r(RED), stroke_width=1.5),
         )
-        self.wait(0.5)
+        card2_labels = VGroup(
+            Text("INCIDENT: Jul 2025", font="Helvetica", font_size=13, color=RED, weight=BOLD),
+            Text("Replit AI agent deletes entire production database", font="Helvetica", font_size=11, color=TEXT),
+            Text('"How could anyone on planet earth use it in production', font="Helvetica", font_size=9, color=AMBER, slant='ITALIC'),
+            Text('if it ignores all orders and deletes your database?"', font="Helvetica", font_size=9, color=AMBER, slant='ITALIC'),
+            Text("— Jason Lemkin, SaaStr", font="Helvetica", font_size=8, color=GRAY),
+        ).arrange(DOWN, buff=0.12)
+        card2 = VGroup(card2[0], card2_labels).arrange(DOWN, buff=0.12)
+        card2.move_to(RIGHT * 2.5 + DOWN * 0.5)
+        for m in card2:
+            self.play(FadeIn(m), run_time=FAST)
+        self.wait(BEAT)
+        self.play(FadeOut(db_group, robot2, card2), run_time=NORMAL)
 
-        self.play(
-            FadeIn(write_label), FadeIn(write_approval),
-            Create(gate_line), FadeIn(gate_label),
-            run_time=NORMAL,
+        # ── Payment Nightmare ──────────────────────────────────────────────
+        card_icon = VGroup(
+            RoundedRectangle(width=1.8, height=1.1, corner_radius=0.12,
+                             fill_color=h2r(AMBER), fill_opacity=0.3,
+                             stroke_color=h2r(AMBER), stroke_width=2),
+            Text("💳", font_size=20),
+            Text("AI Agent Card", font="Helvetica", font_size=8, color=AMBER).shift(DOWN * 0.3),
+        ).move_to(LEFT * 2)
+        counter = Text("$0", font="Fira Code Mono", font_size=24, color=RED)
+        counter.to_edge(RIGHT).shift(LEFT * 2)
+        self.play(FadeIn(card_icon), FadeIn(counter), run_time=NORMAL)
+        bots = VGroup(*[Text("🤖", font_size=16) for _ in range(5)])
+        bots.arrange(RIGHT, buff=0.5).next_to(card_icon, DOWN, buff=0.3)
+        self.play(FadeIn(bots), run_time=FAST)
+        for val in [127, 489, 1203, 4891]:
+            new_c = Text(f"${val:,}", font="Fira Code Mono", font_size=24, color=RED)
+            new_c.move_to(counter)
+            self.play(Transform(counter, new_c), run_time=0.3)
+        self.wait(FAST)
+
+        card3 = VGroup(
+            RoundedRectangle(width=6.5, height=1.6, corner_radius=0.1,
+                             fill_color=h2r(AMBER), fill_opacity=0.1,
+                             stroke_color=h2r(AMBER), stroke_width=1.5),
         )
-        self.play(
-            Create(a_phone), FadeIn(ciba_label), FadeIn(phone, shift=UP * 0.3),
-            run_time=NORMAL,
-        )
-        self.wait(0.3)
+        card3_labels = VGroup(
+            Text("EMERGING THREAT: AI Agents with Credit Cards", font="Helvetica", font_size=12, color=AMBER, weight=BOLD),
+            Text("Visa & Mastercard racing to enable 'agentic commerce'", font="Helvetica", font_size=10, color=TEXT),
+            Text("\"We don't know how many different ways", font="Helvetica", font_size=9, color=GRAY, slant='ITALIC'),
+            Text("this can be exploited yet\" — Payments expert", font="Helvetica", font_size=9, color=GRAY, slant='ITALIC'),
+            Text("$534 BILLION lost to fraud in 2025", font="Helvetica", font_size=11, color=RED, weight=BOLD),
+        ).arrange(DOWN, buff=0.1)
+        card3 = VGroup(card3[0], card3_labels).arrange(DOWN, buff=0.1)
+        card3.move_to(RIGHT * 2.5 + DOWN * 0.5)
+        for m in card3:
+            self.play(FadeIn(m), run_time=FAST)
+        self.wait(BEAT)
+        self.play(FadeOut(card_icon, bots, counter, card3), run_time=NORMAL)
 
-        notif_bg  = RoundedRectangle(
-            corner_radius=0.08, width=1.1, height=0.8,
-            fill_color=AUTH0, fill_opacity=0.9, stroke_width=0,
-        ).move_to(phone).shift(UP * 0.1)
-        notif_txt = Text("Allow\nthis action?", font_size=9, color=WHITE).move_to(notif_bg)
-        notif = VGroup(notif_bg, notif_txt)
-        self.play(FadeIn(notif, scale=0.5), run_time=FAST)
+        # ── The Pattern triptych ───────────────────────────────────────────
+        panel_w, panel_h = 2.5, 1.8
+        for x_pos, label_text in [(-3.5, "Email\nMassacre"), (0, "Database\nNuke"), (3.5, "Payment\nNightmare")]:
+            p = RoundedRectangle(width=panel_w, height=panel_h, corner_radius=0.1,
+                                 fill_color=h2r(RED), fill_opacity=0.1,
+                                 stroke_color=h2r(RED), stroke_width=1)
+            p.move_to(RIGHT * x_pos + UP * 0.5)
+            lbl = Text(label_text, font="Helvetica", font_size=10, color=TEXT)
+            lbl.move_to(p)
+            triptych = VGroup(p, lbl) if x_pos == -3.5 else triptych
+            if x_pos == 0:
+                triptych = VGroup(triptych, VGroup(p, lbl))
+            if x_pos == 3.5:
+                triptych.add(VGroup(p, lbl))
+        if not isinstance(triptych, VGroup):
+            triptych = VGroup()
+        panels = []
+        for x_pos, label_text in [(-3.5, "Email\nMassacre"), (0, "Database\nNuke"), (3.5, "Payment\nNightmare")]:
+            p = RoundedRectangle(width=panel_w, height=panel_h, corner_radius=0.1,
+                                 fill_color=h2r(RED), fill_opacity=0.1,
+                                 stroke_color=h2r(RED), stroke_width=1)
+            p.move_to(RIGHT * x_pos + UP * 0.5)
+            lbl = Text(label_text, font="Helvetica", font_size=10, color=TEXT)
+            lbl.move_to(p)
+            panels.append(VGroup(p, lbl))
+        triptych = VGroup(*panels)
+        self.play(FadeIn(triptych), run_time=NORMAL)
+        self.wait(BEAT)
+        line = Line(LEFT * 5, RIGHT * 5, color=h2r(RED), stroke_width=2)
+        line.next_to(triptych, DOWN, buff=0.3)
+        self.play(Create(line), run_time=FAST)
+        pattern_lines = VGroup(
+            Text("THE COMMON THREAD:", font="Helvetica", font_size=14, color=RED, weight=BOLD),
+            Text("AI agents had permanent access.", font="Helvetica", font_size=12, color=TEXT),
+            Text("No human was asked.", font="Helvetica", font_size=12, color=AMBER),
+            Text("No one could stop them in time.", font="Helvetica", font_size=12, color=RED),
+        ).arrange(DOWN, buff=0.2).next_to(line, DOWN, buff=0.3)
+        for t in pattern_lines:
+            self.play(FadeIn(t), run_time=FAST)
+        self.wait(DRAMATIC)
+        self.play(FadeOut(triptych, line, pattern_lines), run_time=SLOW)
 
-        self.wait(0.8)
-        self.play(
-            Flash(phone, color=SAFE, line_length=0.3, num_lines=8, run_time=0.6),
-            notif_bg.animate.set_fill(SAFE),
-            run_time=0.6,
-        )
 
-        token_text = Text("Token minted → used once → revoked", font_size=18, color=SAFE).to_edge(DOWN, buff=0.5)
-        self.play(FadeIn(token_text, shift=UP * 0.2), run_time=NORMAL)
-        self.wait(1.5)
-        self.wipe()
+# ════════════════════════════════════════════════════════════════════════════
+# SCENE 2 — The Wrong Question (0:35–0:55)
+# ════════════════════════════════════════════════════════════════════════════
 
-    # ═════════════════════════════════════════════════════════════════
-    # SCENE 4 — The Magic Moment (Demo)
-    # ═════════════════════════════════════════════════════════════════
-    def scene_4_demo(self):
-        title = Text("The Magic Moment", font_size=40, color=ACCENT, weight=BOLD).to_edge(UP, buff=0.5)
+class Scene2_TheWrongQuestion(Scene):
+    def construct(self):
+        self.camera.background_color = BG
+
+        title = Text("The Scope Illusion", font="Helvetica", font_size=26, color=TEXT)
+        title.to_edge(UP, buff=1.2)
+        self.play(FadeIn(title), run_time=NORMAL)
+        self.wait(BEAT)
+
+        # OAuth box
+        oauth_rect = RoundedRectangle(width=4, height=2.8, corner_radius=0.15,
+                                      fill_color=h2r(GRAY), fill_opacity=0.1,
+                                      stroke_color=h2r(GRAY), stroke_width=1.5)
+        oauth_header = Text("SlackBot wants to access:", font="Helvetica", font_size=11, color=TEXT)
+        oauth_header.next_to(oauth_rect, UP, buff=0).align_to(oauth_rect, LEFT).shift(RIGHT * 0.3 + UP * 0.9)
+        checks = ["Read messages", "Send messages", "Manage channels", "Delete messages"]
+        check_items = VGroup()
+        for i, item in enumerate(checks):
+            row = VGroup(Text("✓", font_size=12, color=GREEN), Text(item, font="Helvetica", font_size=10, color=TEXT))
+            row.arrange(RIGHT, buff=0.2)
+            row.next_to(oauth_rect, DOWN, buff=0).align_to(oauth_rect, LEFT).shift(RIGHT * 0.4 + DOWN * (0.9 - i * 0.3))
+            check_items.add(row)
+        allow_btn = RoundedRectangle(width=1.2, height=0.35, corner_radius=0.1,
+                                      fill_color=h2r(GREEN), fill_opacity=0.8, stroke_color=GREEN)
+        allow_txt = Text("Allow", font="Helvetica", font_size=10, color=BG, weight=BOLD)
+        allow_txt.move_to(allow_btn)
+        allow_btn.next_to(check_items, DOWN, buff=0.15)
+        oauth_full = VGroup(oauth_rect, oauth_header, check_items, allow_btn, allow_txt)
+        oauth_full.move_to(LEFT * 1.5)
+        self.play(FadeIn(oauth_full), run_time=NORMAL)
+        self.wait(BEAT)
+
+        big_check = Text("✓", font_size=48, color=GREEN).move_to(RIGHT * 2.5)
+        self.play(FadeIn(big_check), run_time=FAST)
+        days_label = Text("Day 1...  Day 30...  Day 90...  Day 365...", font="Fira Code Mono", font_size=14, color=GRAY)
+        days_label.next_to(big_check, DOWN, buff=0.5)
+        self.play(FadeIn(days_label), run_time=SLOW)
+        self.wait(BEAT)
+        arrow = Arrow(LEFT * 1.5, RIGHT * 0.3, color=h2r(RED), buff=0.1)
+        arrow_label = Text("Still valid. Still unchecked.", font="Helvetica", font_size=10, color=RED)
+        arrow_label.next_to(arrow, DOWN, buff=0.1)
+        self.play(Create(arrow), FadeIn(arrow_label), run_time=NORMAL)
+        self.wait(BEAT)
+        quote = Text("You said yes ONCE. The token lives FOREVER.", font="Helvetica", font_size=16, color=AMBER, weight=BOLD)
+        quote.to_edge(DOWN, buff=1.0)
+        self.play(FadeIn(quote), run_time=SLOW)
+        self.wait(DRAMATIC)
+        self.play(FadeOut(oauth_full, big_check, days_label, arrow, arrow_label, quote, title), run_time=NORMAL)
+
+        # The Reframe
+        left_header = Text("❌ THE OLD QUESTION", font="Helvetica", font_size=14, color=RED, weight=BOLD)
+        left_lines = VGroup(
+            Text("WHAT can the agent access?", font="Helvetica", font_size=11, color=TEXT),
+            Text("→ Scopes & permissions", font="Helvetica", font_size=10, color=GRAY),
+            Text("→ Decided once at consent time", font="Helvetica", font_size=10, color=GRAY),
+            Text("→ Token lives until revoked", font="Helvetica", font_size=10, color=GRAY),
+            Text("→ Agent acts freely 24/7", font="Helvetica", font_size=10, color=GRAY),
+        ).arrange(DOWN, buff=0.15)
+        left_box = VGroup(left_header, left_lines).arrange(DOWN, buff=0.2)
+        left_bg = RoundedRectangle(width=3.8, height=left_box.height + 0.4, corner_radius=0.1,
+                                   fill_color=h2r(RED), fill_opacity=0.05, stroke_color=h2r(RED), stroke_width=1)
+        left_box = VGroup(left_bg, left_header, left_lines).arrange(DOWN, buff=0.2)
+        left_box.move_to(LEFT * 2.5)
+
+        right_header = Text("✓ THE RIGHT QUESTION", font="Helvetica", font_size=14, color=GREEN, weight=BOLD)
+        right_lines = VGroup(
+            Text("WHEN can the agent act?", font="Helvetica", font_size=11, color=TEXT),
+            Text("→ Every write operation, every time", font="Helvetica", font_size=10, color=GREEN),
+            Text("→ Decided at the moment of action", font="Helvetica", font_size=10, color=GREEN),
+            Text("→ Token minted on-demand, used once", font="Helvetica", font_size=10, color=GREEN),
+            Text("→ Human approves each critical action", font="Helvetica", font_size=10, color=GREEN),
+        ).arrange(DOWN, buff=0.15)
+        right_box = VGroup(right_header, right_lines).arrange(DOWN, buff=0.2)
+        right_bg = RoundedRectangle(width=3.8, height=right_box.height + 0.4, corner_radius=0.1,
+                                    fill_color=h2r(GREEN), fill_opacity=0.05, stroke_color=h2r(GREEN), stroke_width=1)
+        right_box = VGroup(right_bg, right_header, right_lines).arrange(DOWN, buff=0.2)
+        right_box.move_to(RIGHT * 2.5)
+
+        divider = Line(UP * 2.5, DOWN * 2.5, color=h2r(GRAY), stroke_width=1)
+        self.play(FadeIn(left_box), FadeIn(right_box), Create(divider), run_time=NORMAL)
+        self.wait(BEAT)
+        self.play(right_box.animate.scale(1.05).set_stroke(h2r(GREEN), width=2), run_time=FAST)
+        self.play(right_box.animate.scale(1.0).set_stroke(h2r(GREEN), width=1), run_time=FAST)
+        reveal = Text("It's not about WHAT is allowed.", font="Helvetica", font_size=22, color=TEXT)
+        reveal2 = Text("It's about WHEN.", font="Helvetica", font_size=26, color=GREEN, weight=BOLD)
+        reveal_group = VGroup(reveal, reveal2).arrange(DOWN, buff=0.15).to_edge(DOWN, buff=0.8)
+        self.play(FadeOut(divider), FadeOut(left_box), run_time=NORMAL)
+        self.play(right_box.animate.move_to(UP * 1.5).scale(0.8), run_time=SLOW)
+        self.wait(BEAT)
+        self.play(FadeIn(reveal_group), run_time=SLOW)
+        self.wait(DRAMATIC)
+        self.play(FadeOut(right_box, reveal_group), run_time=NORMAL)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# SCENE 3 — Enter VaultGate (0:55–1:30)
+# ════════════════════════════════════════════════════════════════════════════
+
+class Scene3_EnterVaultGate(Scene):
+    def construct(self):
+        self.camera.background_color = BG
+
+        # Logo reveal
+        shield = ShieldIcon(size=1.2).to_edge(UP, buff=1.5)
+        self.play(FadeIn(shield, scale=0.8), run_time=SLOW)
+        self.wait(BEAT)
+        vg_name = Text("VaultGate", font="Helvetica", font_size=36, color=PURPLE, weight=BOLD)
+        vg_name.next_to(shield, DOWN, buff=0.3)
+        tagline = Text("The Human-in-the-Loop Gateway for AI Agents", font="Helvetica", font_size=14, color=GRAY)
+        tagline.next_to(vg_name, DOWN, buff=0.15)
+        self.play(FadeIn(vg_name), FadeIn(tagline), run_time=NORMAL)
+        self.wait(DRAMATIC)
+        self.play(FadeOut(shield, vg_name, tagline), run_time=NORMAL)
+
+        # Architecture nodes
+        agent_pos  = LEFT * 5
+        vg_pos     = ORIGIN
+        slack_pos  = RIGHT * 5 + UP * 1.5
+        github_pos = RIGHT * 5
+        google_pos = RIGHT * 5 + DOWN * 1.5
+
+        agent_node = VGroup(Text("🤖", font_size=28),
+                             Text("AI Agent\n(any framework)", font="Helvetica", font_size=11, color=TEXT))
+        agent_node.arrange(DOWN, buff=0.1).move_to(agent_pos)
+        self.play(FadeIn(agent_node), run_time=NORMAL)
+        self.wait(BEAT)
+
+        arrow1 = Arrow(agent_pos + RIGHT * 0.5, vg_pos + LEFT * 1.0, buff=0, color=h2r(TEXT), stroke_width=2)
+        self.play(Create(arrow1), run_time=NORMAL)
+
+        vg_box = VGroup(
+            RoundedRectangle(width=2.2, height=1.4, corner_radius=0.15,
+                             fill_color=h2r(PURPLE), fill_opacity=0.15,
+                             stroke_color=h2r(PURPLE), stroke_width=2),
+            Text("VaultGate", font="Helvetica", font_size=14, color=PURPLE, weight=BOLD),
+            Text("Gateway", font="Helvetica", font_size=10, color=GRAY),
+            Text(":18792", font="Fira Code Mono", font_size=9, color=GRAY),
+            Text("/action  /status  /revoke", font="Fira Code Mono", font_size=7, color=GRAY),
+        ).arrange(DOWN, buff=0.05)
+        vg_box.arrange(DOWN, buff=0.05)
+        vg_box.move_to(vg_pos)
+        self.play(FadeIn(vg_box), run_time=NORMAL)
+        self.wait(BEAT)
+
+        # READ path (green, straight through)
+        arrow_read = Arrow(vg_pos + RIGHT * 1.1, slack_pos + LEFT * 1.2, buff=0, color=h2r(GREEN), stroke_width=2)
+        read_label = Text("read:messages", font="Fira Code Mono", font_size=8, color=GREEN)
+        read_label.move_to((vg_pos + RIGHT * 1.1 + slack_pos + LEFT * 1.2) / 2 + UP * 0.25)
+        self.play(Create(arrow_read), FadeIn(read_label), run_time=NORMAL)
+        read_pass = Text("READ → passes through silently", font="Helvetica", font_size=9, color=GREEN)
+        read_pass.next_to(arrow_read, UP, buff=0.1)
+        self.play(FadeIn(read_pass), run_time=FAST)
+
+        for pos, lbl in [(slack_pos, "Slack"), (github_pos, "GitHub"), (google_pos, "Google")]:
+            icon = Circle(radius=0.35, fill_color=h2r(GREEN), fill_opacity=0.2,
+                          stroke_color=h2r(GREEN), stroke_width=1.5)
+            txt = Text(lbl, font="Helvetica", font_size=8, color=GREEN)
+            api = VGroup(icon, txt).arrange(DOWN, buff=0.05).move_to(pos)
+            self.play(FadeIn(api), run_time=FAST)
+        self.wait(BEAT)
+
+        # WRITE path (amber, gate)
+        arrow_write = Arrow(vg_pos + RIGHT * 0.5 + DOWN * 0.5, vg_pos + DOWN * 2.5, buff=0, color=h2r(AMBER), stroke_width=2)
+        write_label = Text("write:messages", font="Fira Code Mono", font_size=8, color=AMBER)
+        write_label.next_to(arrow_write, RIGHT, buff=0.1)
+        self.play(Create(arrow_write), FadeIn(write_label), run_time=NORMAL)
+
+        gate_bar = Line(LEFT * 0.8, RIGHT * 0.8, color=h2r(AMBER), stroke_width=4)
+        gate_bar.move_to(vg_pos + DOWN * 2.0)
+        gate_label = Text("GATE CLOSES", font="Helvetica", font_size=9, color=AMBER, weight=BOLD)
+        gate_label.next_to(gate_bar, DOWN, buff=0.1)
+        self.play(Create(gate_bar), FadeIn(gate_label), run_time=NORMAL)
+
+        arrow_phone = Arrow(gate_bar.get_bottom() + DOWN * 0.1, DOWN * 3.2, buff=0, color=h2r(AMBER), stroke_width=2)
+        self.play(Create(arrow_phone), run_time=NORMAL)
+
+        phone = PhoneNotification(action_text='"Deploying v2.1\nto production"')
+        phone.next_to(arrow_phone, DOWN).shift(DOWN * 0.3)
+        self.play(FadeIn(phone), run_time=NORMAL)
+        self.wait(BEAT)
+
+        # Approve pulse
+        pulse = Circle(radius=0.2, fill_color=h2r(GREEN), stroke_width=0)
+        pulse.move_to(phone.get_center() + DOWN * 1.5)
+        self.play(FadeIn(pulse), run_time=FAST)
+        self.play(pulse.animate.shift(DOWN * 3.5).set_opacity(0),
+                  gate_bar.animate.set_color(h2r(GREEN)).shift(DOWN * 0.3),
+                  run_time=NORMAL)
+
+        token_icon = Text("🔑", font_size=18)
+        token_label = Text("Token minted. Used once. Revoked.", font="Helvetica", font_size=10, color=GREEN)
+        token = VGroup(token_icon, token_label).arrange(RIGHT, buff=0.2)
+        token.move_to(vg_pos + DOWN * 1.2)
+        self.play(FadeIn(token), run_time=NORMAL)
+        self.wait(FAST)
+        self.play(FadeOut(token), run_time=FAST)
+
+        arrow_complete = Arrow(vg_pos + RIGHT * 1.1 + UP * 0.3, slack_pos + LEFT * 0.5, buff=0, color=h2r(GREEN), stroke_width=2)
+        self.play(Create(arrow_complete), run_time=NORMAL)
+        complete_txt = Text("✓ Message sent to #engineering", font="Helvetica", font_size=10, color=GREEN)
+        complete_txt.next_to(arrow_complete, UP, buff=0.1)
+        self.play(FadeIn(complete_txt), run_time=NORMAL)
+        self.wait(BEAT)
+
+        deny_note = Text("DENY → Gate stays closed → Action blocked → Zero exposure", font="Helvetica", font_size=9, color=RED)
+        deny_note.move_to(gate_bar.get_center() + RIGHT * 2.5)
+        self.play(FadeIn(deny_note), run_time=NORMAL)
+        self.wait(BEAT)
+
+        # Key Insight
+        self.play(FadeOut(*self.mobjects, run_time=SLOW))
+        insight = VGroup(
+            Text("This is CIBA", font="Helvetica", font_size=28, color=BLUE, weight=BOLD),
+            Text("Client Initiated Backchannel Authentication", font="Helvetica", font_size=14, color=TEXT),
+            Text("The same standard banks use for high-value transactions.", font="Helvetica", font_size=12, color=GRAY),
+            Text("Not a checkbox. Not a prompt.", font="Helvetica", font_size=12, color=AMBER, weight=BOLD),
+            Text("A cryptographic approval flow.", font="Helvetica", font_size=12, color=GREEN, weight=BOLD),
+        ).arrange(DOWN, buff=0.2)
+        for m in insight:
+            self.play(FadeIn(m), run_time=FAST)
+        self.wait(DRAMATIC)
+        self.play(FadeOut(insight), run_time=NORMAL)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# SCENE 4 — The Magic Moment (1:30–1:55)
+# ════════════════════════════════════════════════════════════════════════════
+
+class Scene4_MagicMoment(Scene):
+    def construct(self):
+        self.camera.background_color = BG
+
+        title = Text("Watch it in action", font="Helvetica", font_size=20, color=GRAY)
+        title.to_edge(UP, buff=0.8)
         self.play(FadeIn(title), run_time=FAST)
 
-        # Left — terminal
-        term_bg = card_box(6.5, 5, fill_color="#0D1117", stroke_color=BORDER).shift(LEFT * 3.2 + DOWN * 0.3)
-        term_title = Text("Terminal", font_size=14, color=MUTED)
-        term_title.next_to(term_bg, UP, buff=0.1)
-        term_title.align_to(term_bg, LEFT).shift(RIGHT * 0.2)
-        term_dots = VGroup(
-            Dot(radius=0.06, color=DANGER),
-            Dot(radius=0.06, color=WARN),
-            Dot(radius=0.06, color=SAFE),
-        ).arrange(RIGHT, buff=0.1).next_to(term_title, LEFT, buff=0.2)
+        divider = Line(UP * 3, DOWN * 3, color=h2r(GRAY), stroke_width=1)
 
-        req_lines = [
-            '$ POST /action',
-            '  service: "slack"',
-            '  action: "send_message"',
-            '  channel: "#engineering"',
-            '  text: "Deploy v2.1"',
+        terminal_lines = [
+            '$ curl -X POST http://localhost:18792/action',
+            '  -d \'{"service": "slack",',
+            '       "action": "send_message",',
+            '       "params": {"channel": "#engineering",',
+            '                   "text": "Deploying v2.1..."}}\'',
+            '',
+            '> Response: {',
+            '  "status": "pending_approval",',
+            '  "auth_req_id": "ciba_8f3k2..."',
+            '}',
         ]
-        req_text = VGroup(*[
-            Text(l, font="Monospace", font_size=14, color=SAFE if l.startswith('$') else MUTED)
-            for l in req_lines
-        ]).arrange(DOWN, buff=0.08, aligned_edge=LEFT)
-        req_text.move_to(term_bg).shift(UP * 1.2)
-        req_text.align_to(term_bg, LEFT).shift(RIGHT * 0.4)
+        terminal = Terminal(lines=terminal_lines, width=5.0, font_size=9)
+        terminal.move_to(LEFT * 2.8 + DOWN * 0.3)
+        phone = PhoneNotification(action_text="send_message\nto #engineering")
+        phone.move_to(RIGHT * 2.8 + DOWN * 0.3)
 
-        pending_lines = [
-            "→ status: pending_approval",
-            '  auth_req_id: "ciba_8f3k2..."',
-            "  Awaiting human approval...",
+        self.play(Create(divider), FadeIn(terminal), FadeIn(phone), run_time=NORMAL)
+        self.wait(BEAT)
+
+        # Approve tap
+        pulse = Circle(radius=0.2, fill_color=h2r(GREEN), stroke_width=0)
+        pulse.move_to(phone.get_center() + DOWN * 1.5)
+        self.play(FadeIn(pulse), run_time=FAST)
+        self.play(pulse.animate.set_opacity(0), run_time=NORMAL)
+
+        new_terminal_lines = [
+            '$ curl -X POST http://localhost:18792/action',
+            '',
+            '> Response: {',
+            '  "status": "approved",',
+            '  "token": "eyJ...[REDACTED]",',
+            '  "ttl": "single_use",',
+            '  "result": "✓ Message sent!"',
+            '}',
         ]
-        pending_text = VGroup(*[
-            Text(l, font="Monospace", font_size=14, color=WARN)
-            for l in pending_lines
-        ]).arrange(DOWN, buff=0.08, aligned_edge=LEFT)
-        pending_text.next_to(req_text, DOWN, buff=0.35).align_to(req_text, LEFT)
+        new_terminal = Terminal(lines=new_terminal_lines, width=5.0, font_size=9)
+        new_terminal.move_to(LEFT * 2.8 + DOWN * 0.3)
 
-        approved_lines = [
-            "→ status: approved",
-            "  token: [single-use, ephemeral]",
-            '  result: "Message sent ✓"',
-        ]
-        approved_text = VGroup(*[
-            Text(l, font="Monospace", font_size=14, color=SAFE)
-            for l in approved_lines
-        ]).arrange(DOWN, buff=0.08, aligned_edge=LEFT)
-        approved_text.next_to(pending_text, DOWN, buff=0.35).align_to(req_text, LEFT)
+        flash = Rectangle(width=8, height=5, fill_color=h2r(GREEN), stroke_width=0, fill_opacity=0.08)
+        flash.move_to(ORIGIN)
+        self.play(FadeIn(flash), run_time=0.1)
+        self.play(FadeOut(flash), Transform(terminal, new_terminal), run_time=NORMAL)
 
-        # Right — phone
-        phone, screen = phone_frame()
-        phone.shift(RIGHT * 3.5 + DOWN * 0.3).scale(0.85)
-
-        notif_header = Text("Auth0 Guardian", font_size=12, color=AUTH0, weight=BOLD)
-        notif_body = VGroup(
-            Text("AI Agent requests:", font_size=11, color=TEXT),
-            Text("", font_size=6),
-            Text("Action: send_message",       font="Monospace", font_size=10, color=MUTED),
-            Text("Target: Slack #engineering", font="Monospace", font_size=10, color=MUTED),
-            Text('Content: "Deploy v2.1"',     font="Monospace", font_size=10, color=MUTED),
-            Text("Scope: write:slack",        font="Monospace", font_size=10, color=MUTED),
-        ).arrange(DOWN, buff=0.06, aligned_edge=LEFT)
-
-        approve_btn = RoundedRectangle(corner_radius=0.08, width=0.8, height=0.3,
-                                       fill_color=SAFE, fill_opacity=1, stroke_width=0)
-        approve_txt = Text("Approve", font_size=10, color=BLACK, weight=BOLD).move_to(approve_btn)
-        deny_btn = RoundedRectangle(corner_radius=0.08, width=0.8, height=0.3,
-                                    fill_color=DANGER, fill_opacity=0.3, stroke_width=0)
-        deny_txt = Text("Deny", font_size=10, color=DANGER).move_to(deny_btn)
-        btns = VGroup(
-            VGroup(approve_btn, approve_txt),
-            VGroup(deny_btn,   deny_txt),
-        ).arrange(RIGHT, buff=0.2)
-        notif_group = VGroup(notif_header, notif_body, btns).arrange(DOWN, buff=0.15)
-        notif_group.scale(0.85).move_to(phone).shift(UP * 0.1)
-
-        # Animate
-        self.play(FadeIn(term_bg), FadeIn(term_title), FadeIn(term_dots), run_time=FAST)
-        self.play(FadeIn(phone), run_time=FAST)
-
-        for line in req_text:
-            self.play(FadeIn(line, shift=RIGHT * 0.2), run_time=0.15)
-        self.wait(0.3)
-        self.play(FadeIn(pending_text, shift=UP * 0.2), run_time=NORMAL)
-
-        # Phone buzz
-        self.play(phone.animate.shift(RIGHT * 0.05), run_time=0.08)
-        self.play(phone.animate.shift(LEFT * 0.1),  run_time=0.08)
-        self.play(phone.animate.shift(RIGHT * 0.05), run_time=0.08)
-        self.play(FadeIn(notif_group, shift=UP * 0.2), run_time=NORMAL)
-        self.wait(1)
-
-        # Tap approve
-        self.play(
-            Flash(approve_btn, color=SAFE, line_length=0.2, num_lines=8, run_time=0.5),
-            approve_btn.animate.set_fill(SAFE, opacity=0.5),
-            run_time=0.5,
-        )
-        self.play(FadeIn(approved_text, shift=UP * 0.2), run_time=NORMAL)
-
-        flash_rect = Rectangle(width=14, height=8, fill_color=SAFE, fill_opacity=0.08, stroke_width=0)
-        self.play(FadeIn(flash_rect, run_time=0.2))
-        self.play(FadeOut(flash_rect, run_time=0.4))
-
-        control_text = Text("You were in control the entire time.", font_size=28, color=SAFE, weight=BOLD).to_edge(DOWN, buff=0.4)
-        self.play(FadeIn(control_text, shift=UP * 0.2), run_time=NORMAL)
+        control = Text("You were in control the entire time.", font="Helvetica", font_size=18, color=GREEN, weight=BOLD)
+        control.to_edge(DOWN, buff=0.8)
+        self.play(FadeIn(control), run_time=SLOW)
         self.wait(DRAMATIC)
-        self.wipe()
+        self.play(FadeOut(terminal, phone, divider, title, control), run_time=NORMAL)
 
-    # ═════════════════════════════════════════════════════════════════
-    # SCENE 5 — Why This Wins
-    # ═════════════════════════════════════════════════════════════════
-    def scene_5_comparison(self):
-        title = heading("Why VaultGate Wins", color=ACCENT, font_size=44).to_edge(UP, buff=0.5)
-        self.play(FadeIn(title), run_time=FAST)
 
-        headers   = ["", "Traditional\nOAuth", "API Keys\n+ Scopes", "VaultGate\n+ CIBA"]
-        rows      = [
-            ["Token lifetime",     "Long-lived",  "Long-lived",  "Single-use"],
-            ["Human approval",     "Once",         "Never",       "Every write"],
-            ["Revocation",         "Manual",       "Manual",      "Automatic"],
-            ["Leaked token risk",  "HIGH",          "HIGH",        "ZERO"],
-            ["Agent goes rogue",   "No stop",      "No stop",     "Denied"],
-        ]
-        col_widths = [2.5, 2.2, 2.2, 2.2]
-        x_starts   = [-4.5, -2.0, 0.2, 2.4]
+# ════════════════════════════════════════════════════════════════════════════
+# SCENE 5 — Why This Wins (1:55–2:20)
+# ════════════════════════════════════════════════════════════════════════════
 
-        h_texts = VGroup()
-        for i, (h, x) in enumerate(zip(headers, x_starts)):
-            t = Text(h, font_size=16, color=ACCENT if i == 3 else MUTED, weight=BOLD)
-            t.move_to(RIGHT * (x + col_widths[i] / 2) + UP * 1.5)
-            h_texts.add(t)
-        self.play(FadeIn(h_texts), run_time=FAST)
-        h_line = Line(LEFT * 5.5 + UP * 1.0, RIGHT * 5.5 + UP * 1.0, color=BORDER, stroke_width=1)
-        self.play(Create(h_line), run_time=FAST)
+class Scene5_WhyThisWins(Scene):
+    def construct(self):
+        self.camera.background_color = BG
 
-        for r_idx, row in enumerate(rows):
-            y = 0.4 - r_idx * 0.7
-            row_group = VGroup()
-            for c_idx, (cell, x) in enumerate(zip(row, x_starts)):
-                if c_idx == 0:
-                    color = TEXT
-                elif c_idx == 3:
-                    color = SAFE
-                elif cell in ("HIGH", "No stop", "Never"):
-                    color = DANGER
-                else:
-                    color = MUTED
-                t = Text(cell, font_size=16, color=color, weight=BOLD if c_idx == 3 else "")
-                t.move_to(RIGHT * (x + col_widths[c_idx] / 2) + UP * y)
-                row_group.add(t)
-            self.play(FadeIn(row_group, shift=LEFT * 0.2), run_time=0.35)
-            self.wait(0.5)
+        title = Text("Why VaultGate Wins", font="Helvetica", font_size=26, color=TEXT)
+        title.to_edge(UP, buff=1.0)
+        self.play(FadeIn(title), run_time=NORMAL)
+        self.wait(BEAT)
 
-        stats_title = Text("Technical Credibility", font_size=20, color=MUTED).shift(DOWN * 2.2)
-        stats = VGroup(*[
-            Text(s, font_size=18, color=SAFE)
-            for s in ["227 tests", "100% coverage", "OCI on GHCR", "Full CIBA flow", "Demo mode"]
-        ]).arrange(RIGHT, buff=0.6).shift(DOWN * 2.8)
-        self.play(FadeIn(stats_title), run_time=FAST)
-        self.play(*[FadeIn(s, shift=UP * 0.2) for s in stats], run_time=NORMAL)
-        self.wait(1.5)
-        self.wipe()
-
-        cb1 = Text("Every one of these disasters had valid OAuth tokens.", font_size=24, color=TEXT).shift(UP * 1)
-        cb2 = Text("Every one had proper scopes.",                       font_size=24, color=TEXT).next_to(cb1, DOWN, buff=0.3)
-        cb3 = Text('None of them asked: "Should I do this RIGHT NOW?"', font_size=24, color=WARN).next_to(cb2, DOWN, buff=0.5)
-        cb4 = Text("VaultGate does.", font_size=36, color=SAFE, weight=BOLD).next_to(cb3, DOWN, buff=0.6)
-        self.play(FadeIn(cb1, shift=UP * 0.2), run_time=NORMAL)
-        self.play(FadeIn(cb2, shift=UP * 0.2), run_time=NORMAL)
-        self.wait(0.3)
-        self.play(FadeIn(cb3, shift=UP * 0.2), run_time=NORMAL)
-        self.wait(0.3)
-        self.play(FadeIn(cb4, shift=UP * 0.2), run_time=SLOW)
-        self.wait(DRAMATIC)
-        self.wipe()
-
-    # ═════════════════════════════════════════════════════════════════
-    # SCENE 6 — The Future
-    # ═════════════════════════════════════════════════════════════════
-    def scene_6_future(self):
-        title = heading("What's Next", color=ACCENT, font_size=44).to_edge(UP, buff=0.5)
-        self.play(FadeIn(title), run_time=FAST)
-
-        cols_data = [
-            ("NOW ✅",  SAFE,  ["CIBA approval\nfor all writes",    "Scope mapping\nread vs write",    "Auth0 Token\nVault integration"]),
-            ("NEXT 🔜", WARN,  ["Policy engine\nauto-approve",    "Audit trail UI\nfull history",   "Rate limiting\nper-agent throttle"]),
-            ("FUTURE 🔮", ACCENT, ["Multi-tenant\nenterprise",      "Action binding\ncommitment",      "Agent reputation\ntrust scores"]),
+        col_widths = [2.2, 2.0, 1.5, 2.0]
+        headers = ["", "Traditional\nOAuth + Scopes", "API Keys", "VaultGate\n+ CIBA"]
+        rows_data = [
+            ["Token lifetime",    "Long-lived",   "Long-lived",  "Single-use"],
+            ["Human approval",    "Once at grant", "Never",       "Every write"],
+            ["Revocation",        "Manual",        "Manual",      "Automatic"],
+            ["Leaked token risk", "HIGH",          "HIGH",        "ZERO"],
+            ["Agent goes rogue",  "No stop",       "No stop",     "Denied ✗"],
         ]
 
-        all_cols = VGroup()
-        for col_idx, (header, color, items) in enumerate(cols_data):
-            x = -4 + col_idx * 4
-            h = Text(header, font_size=22, color=color, weight=BOLD).move_to(RIGHT * x + UP * 1.5)
-            item_group = VGroup()
-            for i, item_text in enumerate(items):
-                box = RoundedRectangle(
-                    corner_radius=0.1, width=3.2, height=1.0,
-                    fill_color=DARK_BOX, fill_opacity=1,
-                    stroke_color=color, stroke_width=1.5,
-                )
-                txt = Text(item_text, font_size=14, color=TEXT).move_to(box)
-                item = VGroup(box, txt).move_to(RIGHT * x + DOWN * (i * 1.2 - 0.2))
-                item_group.add(item)
-            col = VGroup(h, item_group)
-            all_cols.add(col)
+        table_rows = []
+        header_rect = Rectangle(width=sum(col_widths), height=0.55,
+                                fill_color=h2r(GRAY), fill_opacity=0.2,
+                                stroke_color=h2r(GRAY), stroke_width=1)
+        x = -sum(col_widths) / 2
+        header_cells = VGroup()
+        for h, w in zip(headers, col_widths):
+            cell = Text(h, font="Helvetica", font_size=9, color=TEXT)
+            cell.move_to(header_rect.get_center() + RIGHT * (x + w / 2))
+            header_cells.add(cell)
+            x += w
+        table_rows.append(VGroup(header_rect, header_cells))
 
-        for col in all_cols:
-            self.play(FadeIn(col, shift=UP * 0.3), run_time=NORMAL)
-            self.wait(0.3)
-        self.wait(1.5)
-        self.wipe()
+        for ri, row_data in enumerate(rows_data):
+            bg_op = 0.05 if ri % 2 == 0 else 0.1
+            row_rect = Rectangle(width=sum(col_widths), height=0.42,
+                                  fill_color=h2r(GRAY), fill_opacity=bg_op,
+                                  stroke_color=h2r(GRAY), stroke_width=0.5)
+            x = -sum(col_widths) / 2
+            row_cells = VGroup()
+            for ci, (cell_text, w) in enumerate(zip(row_data, col_widths)):
+                is_vg = ci == 3
+                is_bad = cell_text in ["HIGH", "No stop", "Long-lived", "Once at grant", "Manual"]
+                color = GREEN if is_vg and not is_bad else (RED if is_bad and ci > 0 else TEXT)
+                cell = Text(cell_text, font="Helvetica", font_size=9, color=color)
+                cell.move_to(row_rect.get_center() + RIGHT * (x + w / 2))
+                row_cells.add(cell)
+                x += w
+            table_rows.append(VGroup(row_rect, row_cells))
 
-        v1 = Text("AI agents should be able to", font_size=36, color=TEXT).shift(UP * 0.8)
-        v2 = Text("ACT on your behalf.", font_size=40, color=ACCENT, weight=BOLD).next_to(v1, DOWN, buff=0.3)
-        v3 = Text("But you should", font_size=36, color=TEXT).next_to(v2, DOWN, buff=0.5)
-        v4 = Text("ALWAYS be in control.", font_size=40, color=SAFE, weight=BOLD).next_to(v3, DOWN, buff=0.3)
-        self.play(FadeIn(v1), run_time=NORMAL)
-        self.play(FadeIn(v2, shift=UP * 0.2), run_time=NORMAL)
-        self.wait(0.3)
-        self.play(FadeIn(v3), run_time=NORMAL)
-        self.play(FadeIn(v4, shift=UP * 0.2), run_time=SLOW)
+        table = VGroup(*table_rows).arrange(DOWN, buff=0).move_to(DOWN * 0.3)
+        for row in table:
+            self.play(FadeIn(row), run_time=FAST)
+            self.wait(FAST / 2)
+        self.wait(BEAT)
+
+        self.play(FadeOut(table), run_time=NORMAL)
+
+        # Stats bar
+        stats = [("227 tests", GREEN), ("100% coverage", GREEN),
+                 ("OCI on GHCR", BLUE), ("Full CIBA + Auth0 Guardian", BLUE),
+                 ("Demo mode", PURPLE)]
+        progress_bg = Rectangle(width=8, height=0.08, fill_color=h2r(GRAY), stroke_width=0)
+        progress_bg.to_edge(DOWN, buff=1.8)
+        self.play(FadeIn(progress_bg), run_time=FAST)
+
+        for i, (label, color) in enumerate(stats):
+            pill = RoundedRectangle(width=1.5, height=0.3, corner_radius=0.15,
+                                    fill_color=h2r(color), fill_opacity=0.8,
+                                    stroke_color=h2r(color), stroke_width=1)
+            pill_txt = Text(f"✓ {label}", font="Helvetica", font_size=9, color=h2r(BG), weight=BOLD)
+            pill_txt.move_to(pill.get_center())
+            pill_grp = VGroup(pill, pill_txt)
+            pill_grp.next_to(progress_bg, UP, buff=0.25).shift(RIGHT * (-3.5 + i * 1.75))
+            self.play(FadeIn(pill_grp), run_time=FAST)
+        self.wait(BEAT)
+
+        callback = Text(
+            "Every one of these disasters had valid OAuth tokens.\n"
+            "Every one had proper scopes.\n"
+            "None of them asked: \"Should I do this RIGHT NOW?\"\n"
+            "VaultGate does.",
+            font="Helvetica", font_size=14, color=TEXT, weight=BOLD)
+        callback.move_to(ORIGIN)
+        self.play(FadeOut(progress_bg), FadeIn(callback), run_time=SLOW)
         self.wait(DRAMATIC)
-        self.wipe()
+        self.play(FadeOut(callback, title), run_time=NORMAL)
 
-    # ═════════════════════════════════════════════════════════════════
-    # SCENE 7 — Call to Action
-    # ═════════════════════════════════════════════════════════════════
-    def scene_7_cta(self):
-        shield = Text("🛡", font_size=80).shift(UP * 1.5)
-        logo   = Text("VaultGate", font_size=64, color=ACCENT, weight=BOLD).next_to(shield, DOWN, buff=0.3)
-        divider = Line(LEFT * 3, RIGHT * 3, color=BORDER, stroke_width=1).next_to(logo, DOWN, buff=0.4)
-        tagline   = Text("The Human-in-the-Loop Gateway for AI Agents", font_size=22, color=MUTED).next_to(divider, DOWN, buff=0.3)
-        tech      = Text("Express • Auth0 Token Vault • CIBA • Auth0 Guardian", font_size=16, color=MUTED).next_to(tagline, DOWN, buff=0.5)
-        stats     = Text("227 tests • 100% coverage • OCI on GHCR", font_size=16, color=SAFE).next_to(tech, DOWN, buff=0.15)
-        hackathon = Text('Built for the Auth0 "Authorized to Act" Hackathon', font_size=18, color=AUTH0).next_to(stats, DOWN, buff=0.5)
 
-        self.play(FadeIn(shield, scale=0.5), run_time=SLOW)
-        self.play(FadeIn(logo, shift=UP * 0.2), run_time=NORMAL)
-        self.play(Create(divider), run_time=FAST)
-        self.play(FadeIn(tagline), run_time=NORMAL)
-        self.play(FadeIn(tech), FadeIn(stats), run_time=NORMAL)
-        self.play(FadeIn(hackathon, shift=UP * 0.2), run_time=NORMAL)
-        self.wait(3)
-        self.play(*[FadeOut(m) for m in self.mobjects], run_time=SLOW)
-        self.wait(0.5)
+# ════════════════════════════════════════════════════════════════════════════
+# SCENE 6 — The Future (2:20–2:40)
+# ════════════════════════════════════════════════════════════════════════════
+
+class Scene6_TheFuture(Scene):
+    def construct(self):
+        self.camera.background_color = BG
+
+        title = Text("The Future of VaultGate", font="Helvetica", font_size=26, color=TEXT)
+        title.to_edge(UP, buff=1.0)
+        self.play(FadeIn(title), run_time=NORMAL)
+        self.wait(BEAT)
+
+        timeline = Line(LEFT * 5.5, RIGHT * 5.5, color=h2r(GRAY), stroke_width=2)
+        timeline.move_to(DOWN * 0.5)
+        for lbl, x in [(Text("NOW", font="Helvetica", font_size=11, color=GREEN, weight=BOLD), -3.8),
+                       (Text("NEXT", font="Helvetica", font_size=11, color=AMBER, weight=BOLD), 0),
+                       (Text("FUTURE", font="Helvetica", font_size=11, color=BLUE, weight=BOLD), 3.8)]:
+            lbl.move_to(timeline.get_center() + LEFT * x + UP * 0.35)
+            self.play(FadeIn(lbl), run_time=FAST)
+        for x in [-3.8, 0, 3.8]:
+            dot = Circle(radius=0.1, fill_color=h2r(GRAY), stroke_width=0)
+            dot.move_to(timeline.get_center() + LEFT * x)
+            self.play(FadeIn(dot), run_time=FAST)
+        self.play(Create(timeline), run_time=NORMAL)
+
+        def feature_card(text, color, x_pos):
+            card = VGroup(
+                RoundedRectangle(width=2.5, height=0.65, corner_radius=0.1,
+                                 fill_color=h2r(color), fill_opacity=0.1,
+                                 stroke_color=h2r(color), stroke_width=1.5),
+                Text(text, font="Helvetica", font_size=10, color=color),
+            ).arrange(DOWN, buff=0.1)
+            card.move_to(timeline.get_center() + LEFT * x_pos + DOWN * 1.2)
+            return card
+
+        features = [
+            ("CIBA Approval", GREEN, -4.5), ("Scope Mapping", GREEN, -3.5),
+            ("Auth0 Token Vault", GREEN, -5.0), ("Policy Engine", AMBER, -0.5),
+            ("Audit Trail UI", AMBER, 0.5), ("Rate Limiting", AMBER, -1.0),
+            ("Multi-tenant Enterprise", BLUE, 3.5), ("Agent Reputation", BLUE, 4.5),
+            ("Action Binding", BLUE, 3.0),
+        ]
+        for text, color, x in features:
+            self.play(FadeIn(feature_card(text, color, x)), run_time=FAST)
+        self.wait(BEAT)
+
+        self.play(FadeOut(*self.mobjects, run_time=SLOW))
+        vision = Text("AI agents should be able to ACT on your behalf.",
+                      font="Helvetica", font_size=20, color=TEXT)
+        vision2 = Text("But you should ALWAYS be in control.",
+                       font="Helvetica", font_size=22, color=GREEN, weight=BOLD)
+        vision_group = VGroup(vision, vision2).arrange(DOWN, buff=0.3)
+        for m in vision_group:
+            self.play(FadeIn(m), run_time=SLOW)
+        self.wait(DRAMATIC)
+        self.play(FadeOut(vision_group), run_time=NORMAL)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# SCENE 7 — Call to Action (2:40–2:55)
+# ════════════════════════════════════════════════════════════════════════════
+
+class Scene7_CallToAction(Scene):
+    def construct(self):
+        self.camera.background_color = BG
+
+        shield = ShieldIcon(size=1.5).to_edge(UP, buff=1.2)
+        self.play(FadeIn(shield, scale=0.8), run_time=SLOW)
+        self.wait(BEAT)
+
+        vg_name = Text("VaultGate", font="Helvetica", font_size=40, color=PURPLE, weight=BOLD)
+        vg_name.next_to(shield, DOWN, buff=0.3)
+        tagline = Text("The Human-in-the-Loop Gateway for AI Agents", font="Helvetica", font_size=16, color=GRAY)
+        tagline.next_to(vg_name, DOWN, buff=0.15)
+        divider = Line(LEFT * 2.5, RIGHT * 2.5, color=h2r(GRAY), stroke_width=0.5)
+        divider.next_to(tagline, DOWN, buff=0.3)
+        links = VGroup(
+            Text("github.com/nokai-dev/vaultgate", font="Fira Code Mono", font_size=12, color=BLUE),
+            Text("Built with Auth0 Token Vault + CIBA", font="Helvetica", font_size=11, color=GRAY),
+            Text("Express · Auth0 Token Vault · Auth0 Guardian · OCI", font="Helvetica", font_size=10, color=GRAY),
+            Text("227 tests · 100% coverage · GHCR image", font="Helvetica", font_size=10, color=GRAY),
+        ).arrange(DOWN, buff=0.15)
+        links.next_to(divider, DOWN, buff=0.3)
+        hackathon_tag = Text('For the Auth0 "Authorized to Act" Hackathon', font="Helvetica", font_size=12, color=AMBER)
+        hackathon_tag.to_edge(DOWN, buff=1.0)
+
+        self.play(FadeIn(vg_name), FadeIn(tagline), FadeIn(divider),
+                  FadeIn(links), FadeIn(hackathon_tag), run_time=NORMAL)
+        self.wait(DRAMATIC * 1.5)
+
+        fade = Rectangle(width=20, height=12, fill_color=h2r(BG), stroke_width=0)
+        self.play(FadeIn(fade), run_time=SLOW)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# FULL PITCH — Combined Scene
+# ════════════════════════════════════════════════════════════════════════════
+
+class VaultGatePitch(Scene):
+    def construct(self):
+        self.next_section("Horror Stories")
+        Scene1_HorrorStories.construct(self)
+        self.wait(BEAT)
+        self.next_section("The Wrong Question")
+        Scene2_TheWrongQuestion.construct(self)
+        self.wait(BEAT)
+        self.next_section("Enter VaultGate")
+        Scene3_EnterVaultGate.construct(self)
+        self.wait(BEAT)
+        self.next_section("Magic Moment")
+        Scene4_MagicMoment.construct(self)
+        self.wait(BEAT)
+        self.next_section("Why This Wins")
+        Scene5_WhyThisWins.construct(self)
+        self.wait(BEAT)
+        self.next_section("The Future")
+        Scene6_TheFuture.construct(self)
+        self.wait(BEAT)
+        self.next_section("Call to Action")
+        Scene7_CallToAction.construct(self)

@@ -249,6 +249,25 @@ export class TokenVault {
   }
 
   /**
+   * Get the configured Slack Bot Token for direct Slack API calls.
+   * The Bot Token is used for Slack API operations; the Auth0 M2M token
+   * is used only for token lifecycle management (issue/revoke via CIBA).
+   */
+  getSlackBotToken(): string {
+    return this.config.slackBotToken || '';
+  }
+
+  /**
+   * Read recent messages from a Slack channel.
+   */
+  async readSlackMessages(
+    token: string,
+    target: string
+  ): Promise<{ ok: boolean; messages: Array<{ ts: string; text: string; user: string }> }> {
+    return this.slackClient.readMessages(token, target);
+  }
+
+  /**
    * Fetch a real M2M token from Auth0 using client credentials grant
    * The token is specific to the Token Vault API (https://auth0.com/ai/)
    */
@@ -258,12 +277,11 @@ export class TokenVault {
     }
 
     try {
-      // Type assertion needed: scope IS supported by the OAuth spec and runtime
-      // but ClientCredentialsGrantRequest type doesn't include it
+      // NOTE: Scope is NOT passed here because Token Vault handles permission
+      // via CIBA user consent. The M2M token just grants access to the vault itself.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response = await this.auth0!.oauth.clientCredentialsGrant({
         audience: this.config.tokenVaultApiId,
-        scope,
       } as any);
 
       return response.data.access_token;

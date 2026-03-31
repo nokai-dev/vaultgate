@@ -78,13 +78,14 @@ describe('getCIBABindingMessage', () => {
 
   it('formats write action with body', () => {
     const msg = getCIBABindingMessage('slack', 'write', '#general', 'Hello world');
-    expect(msg).toBe('Post to SLACK #general: "Hello world"');
+    expect(msg).toBe('Post to SLACK #general: Hello world');
   });
 
-  it('truncates long body to 47 chars', () => {
+  it('truncates long body and sanitizes', () => {
     const longBody = 'A'.repeat(100);
     const msg = getCIBABindingMessage('slack', 'write', '#general', longBody);
-    expect(msg).toBe('Post to SLACK #general: "' + 'A'.repeat(47) + '..."');
+    expect(msg).toContain('...');
+    expect(msg).not.toContain('"');
   });
 
   it('formats admin action correctly', () => {

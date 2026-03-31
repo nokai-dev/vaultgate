@@ -41,10 +41,15 @@ export class VaultGate {
       let result: unknown;
 
       if (request.service === 'slack') {
+        // Use the Slack Bot Token from config (not the Auth0 M2M JWT).
+        // The Auth0 M2M token is used to request a scoped token via CIBA,
+        // but for Slack API calls we need the real Bot Token.
+        // Token lifecycle (issue/revoke/expire) is still tracked via Auth0.
+        const slackBotToken = this.tokenVault.getSlackBotToken();
         result = await this.tokenVault.executeSlackAction(
-          token,
+          slackBotToken,
           request.target,
-          request.body ?? ''
+          request.body ?? `VaultGate READ check on ${request.target}`
         );
       } else {
         result = { success: true, message: `Executed ${request.action} on ${request.target}` };

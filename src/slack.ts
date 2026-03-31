@@ -41,7 +41,7 @@ export class SlackClient {
   }
 
   /**
-   * Post a message to a Slack channel
+   * Post a message to a Slack channel (for write/delete actions)
    */
   async postMessage(
     token: string,
@@ -171,6 +171,101 @@ export class SlackClient {
     );
 
     return channel?.id;
+  }
+
+  /*  /**
+   * Read channel info using conversations.list (available scopes).
+   * This demonstrates the READ flow: silent M2M token + Slack API call.
+   */
+  async readMessages(
+    token: string,
+    target: string,
+    limit: number = 5
+  ): Promise<{ ok: boolean; messages: Array<{ ts: string; text: string; user: string }> }> {
+    const channel = target.startsWith('#') ? target.slice(1) : target;
+
+    if (this.demoMode) {
+      console.log('\n+-------------------------------------------------------------+');
+      console.log('|  [SLACK] DEMO MODE -- simulating conversations.list           |');
+      console.log('+-------------------------------------------------------------+');
+      console.log('|  Channel: ' + ('#' + channel).substring(0, 50).padEnd(50) + '|');
+      console.log('|  Result:  [OK] DEMO -- returning channel info                 |');
+      console.log('+-------------------------------------------------------------+\n');
+      return {
+        ok: true,
+        messages: [{
+          ts: Date.now() + '.000000',
+          text: 'Demo: channel #' + channel + ' has 3 messages (demo mode)',
+          user: 'DEMO',
+        }],
+      };
+    }
+
+    console.log('\n+-------------------------------------------------------------+');
+    console.log('|  [SLACK] API CALL                                           |');
+    console.log('+-------------------------------------------------------------+');
+    console.log('|  Method:   conversations.list + info                         |');
+    console.log('|  Token:    ' + token.substring(0, 20) + '...' + token.slice(-10).padStart(10) + '|');
+    console.log('+-------------------------------------------------------------+');
+    console.log('|  Channel: ' + ('#' + channel).substring(0, 50).padEnd(50) + '|');
+    console.log('+-------------------------------------------------------------+\n');
+
+    try {
+      // Find the channel by name
+      const listResult = await this.client.conversations.list({
+        types: 'public_channel,private_channel',
+        limit: 200,
+      });
+
+      const found = listResult.channels?.find(
+        c => c.name === channel.replace('#', '')
+      );
+
+      if (!found) {
+        throw new Error('Channel #' + channel + ' not found or bot is not a member');
+      }
+
+      // Get full channel info
+      const infoResult = await this.client.conversations.info({
+        token,
+        channel: found.id!,
+      });
+
+      if (!infoResult.ok) {
+        throw new Error(infoResult.error ?? 'conversations.info failed');
+      }
+
+      const ch = infoResult.channel!;
+      const memberCount = ch.num_members ?? 0;
+      const topic = ch.topic?.value || 'No topic set';
+      const purpose = ch.purpose?.value || 'No purpose set';
+
+      console.log('\n+-------------------------------------------------------------+');
+      console.log('|  [SLACK] API RESPONSE                                        |');
+      console.log('+-------------------------------------------------------------+');
+      console.log('|  [OK] SUCCESS -- Verified access to #' + channel.padEnd(37) + '|');
+      console.log('|  Channel ID:  ' + (ch.id ?? '').padEnd(42) + '|');
+      console.log('|  Members:     ' + memberCount.toString().padEnd(42) + '|');
+      console.log('|  Topic:       ' + topic.substring(0, 42).padEnd(42) + '|');
+      console.log('+-------------------------------------------------------------+\n');
+
+      return {
+        ok: true,
+        messages: [{
+          ts: ch.last_read ?? Date.now().toString(),
+          text: '[#' + channel + '] Members: ' + memberCount + ' | Topic: ' + topic + ' | Purpose: ' + purpose,
+          user: ch.creator ?? 'unknown',
+        }],
+      };
+    } catch (err) {
+      const error = err as Error;
+      console.log('\n+-------------------------------------------------------------+');
+      console.log('|  [SLACK] API ERROR                                           |');
+      console.log('+-------------------------------------------------------------+');
+      console.log('|  Error: ' + (error.message ?? 'Unknown error').substring(0, 44).padEnd(46) + '|');
+      console.log('+-------------------------------------------------------------+\n');
+      throw err;
+    }
   }
 }
 

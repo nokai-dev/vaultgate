@@ -111,6 +111,9 @@ echo -e "${YELLOW}▶ Starting VaultGate HTTP server on port ${VAULTGATE_PORT}..
 # Clear port before starting
 kill_port $VAULTGATE_PORT
 
+# Load .env.local (contains AUTH0_CLIENT_SECRET)
+set -a && source .env.local && set +a
+
 # Use tsx to run the server directly (no build step needed)
 node_modules/.bin/tsx src/index.ts &
 SERVER_PID=$!
@@ -159,14 +162,14 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BOLD}STEP 2 — READ (Silent Token — No CIBA)${RESET}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 
-echo -e "  ${BOLD}→${RESET} AI agent requests: ${GREEN}read${RESET} from ${YELLOW}#engineering${RESET}"
+echo -e "  ${BOLD}→${RESET} AI agent requests: ${GREEN}read${RESET} from ${YELLOW}#all-auth0${RESET}"
 echo -e "  ${BOLD}→${RESET} Scope needed: ${CYAN}slack.messages.read${RESET}"
 echo -e "  ${BOLD}→${RESET} CIBA required: ${RED}NO${RESET} (read operations are silent)"
 echo ""
 
 READ_RESP=$(curl -s -X POST "http://${VAULTGATE_HOST}:${VAULTGATE_PORT}/action" \
   -H "Content-Type: application/json" \
-  -d '{"service":"slack","action":"read","target":"#engineering"}')
+  -d '{"service":"slack","action":"read","target":"#all-auth0"}')
 
 echo_json "$READ_RESP" | sed 's/^/    /'
 
@@ -178,7 +181,7 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BOLD}STEP 3 — WRITE with CIBA Step-Up Auth${RESET}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 
-echo -e "  ${BOLD}→${RESET} AI agent requests: ${GREEN}write${RESET} to ${YELLOW}#general${RESET}"
+echo -e "  ${BOLD}→${RESET} AI agent requests: ${GREEN}write${RESET} to ${YELLOW}#all-auth0${RESET}"
 echo -e "  ${BOLD}→${RESET} Message: \"Sprint planning starts at 3pm 🎯\""
 echo -e "  ${BOLD}→${RESET} Scope needed: ${CYAN}slack.messages.write${RESET}"
 echo -e "  ${BOLD}→${RESET} CIBA required: ${GREEN}YES${RESET} — push sent to Auth0 Guardian"
@@ -188,7 +191,7 @@ echo ""
 
 WRITE_RESP=$(curl -s -X POST "http://${VAULTGATE_HOST}:${VAULTGATE_PORT}/action" \
   -H "Content-Type: application/json" \
-  -d '{"service":"slack","action":"write","target":"#general","body":"Sprint planning starts at 3pm 🎯"}')
+  -d '{"service":"slack","action":"write","target":"#all-auth0","body":"Sprint planning starts at 3pm 🎯"}')
 
 echo_json "$WRITE_RESP" | sed 's/^/    /'
 
@@ -237,10 +240,10 @@ echo -e "${CYAN}║${RESET}                    ${BOLD}✅ DEMO COMPLETE${RESET} 
 echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════╣${RESET}"
 echo -e "${CYAN}║${RESET}  What just happened:                                                  ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}                                                                      ${CYAN}║${RESET}"
-echo -e "${CYAN}║${RESET}  1. ${GREEN}READ${RESET} (slack:#engineering) — Silent token, no human needed        ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  1. ${GREEN}READ${RESET} (slack:#all-auth0) — Silent token, no human needed        ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}     AI agent got access instantly without interrupting the user   ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}                                                                      ${CYAN}║${RESET}"
-echo -e "${CYAN}║${RESET}  2. ${YELLOW}WRITE${RESET} (slack:#general) — CIBA triggered                         ${CYAN}║${RESET}"
+echo -e "${CYAN}║${RESET}  2. ${YELLOW}WRITE${RESET} (slack:#all-auth0) — CIBA triggered                         ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}     • Push notification sent to Auth0 Guardian                  ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}     • Poll loop ran (visible in terminal)                        ${CYAN}║${RESET}"
 echo -e "${CYAN}║${RESET}     • User approved on phone → token issued                      ${CYAN}║${RESET}"
