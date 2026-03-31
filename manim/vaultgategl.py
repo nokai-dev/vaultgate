@@ -46,6 +46,12 @@ def badge(label, color=DANGER):
     bg.set_x(txt.get_x()).set_y(txt.get_y())
     return VGroup(bg, txt)
 
+def hex_gate(label="GATE", color=WARN, size=1.2):
+    """Draw a hexagon shape for decision points (approve/deny gate)."""
+    h = RegularPolygon(n=6, radius=size * 0.6, stroke_color=color, stroke_width=2, fill_opacity=0)
+    t = Text(label, font_size=11, color=color, weight=BOLD).move_to(h)
+    return VGroup(h, t)
+
 
 # ═════════════════════════════════════════════════════════════════════
 class VaultGatePitch(Scene):
@@ -210,6 +216,7 @@ class VaultGatePitch(Scene):
 
     # ═════════════════════════════════════════════════════════════════
     def scene_3_vaultgate(self):
+        # ── Title ──────────────────────────────────────────────────────────
         shield = Text("🛡", font_size=80).shift(UP * 0.5)
         logo   = heading("VaultGate", size=72, color=ACCENT).next_to(shield, DOWN, buff=0.2)
         tag    = body_text("The Human-in-the-Loop Gateway for AI Agents", size=24, color=MUTED).next_to(logo, DOWN, buff=0.3)
@@ -218,51 +225,76 @@ class VaultGatePitch(Scene):
         self.wait(2)
         self.wipe()
 
-        # Architecture
-        agent    = node("AI Agent", "🤖", MUTED,  2.2, 1.0).shift(LEFT * 5)
-        gateway  = node("VaultGate", "🛡", ACCENT, 2.4, 1.2)
-        slack    = node("Slack", "💬", SAFE, 1.6, 0.9).shift(RIGHT * 4 + UP * 1.8)
-        github   = node("GitHub", "📂", SAFE, 1.6, 0.9).shift(RIGHT * 4)
-        google   = node("Google", "📧", SAFE, 1.6, 0.9).shift(RIGHT * 4 + DOWN * 1.8)
+        # ── Layout (left → right: Agent → VaultGate → Services) ──────────
+        # Y positions: services at Y=1.8, agent at Y=0, phone below at Y=-2.2
+        agent    = node("AI Agent", "🤖", MUTED,  2.2, 1.0).shift(LEFT * 5.5 + DOWN * 0.2)
+        gateway  = node("VaultGate", "🛡", ACCENT, 2.6, 1.2).shift(DOWN * 0.2)
+        slack    = node("Slack",     "💬", SAFE,   1.6, 0.9).shift(RIGHT * 4.5 + UP * 1.8)
+        github   = node("GitHub",   "📂", SAFE,   1.6, 0.9).shift(RIGHT * 4.5)
+        google   = node("Google",   "📧", SAFE,   1.6, 0.9).shift(RIGHT * 4.5 + DOWN * 1.8)
 
-        self.play(Write(agent), run_time=0.4)
+        self.play(Write(agent),   run_time=0.4)
         self.play(Write(gateway), run_time=0.4)
 
+        # Agent → VaultGate arrow
         a1 = Arrow(agent.get_right(), gateway.get_left(), buff=0.2, color=MUTED, stroke_width=3)
         self.play(GrowArrow(a1), run_time=0.4)
 
-        # Read path
-        rl = body_text("read:*", size=18, color=SAFE).shift(RIGHT * 1 + UP * 2.2)
-        rp = body_text("→ passes through", size=15, color=SAFE).next_to(rl, DOWN, buff=0.05)
-        self.play(Write(VGroup(rl, rp)), Write(slack), Write(github), Write(google), run_time=0.4)
+        # Read path label (above gateway-to-services)
+        rl = body_text("read:*", size=18, color=SAFE).shift(RIGHT * 0.8 + UP * 2.3)
+        self.play(Write(rl), Write(slack), Write(github), Write(google), run_time=0.4)
+
+        # VaultGate → services (all at same Y, clean horizontal arrows)
         for n in [slack, github, google]:
-            a = Arrow(gateway.get_right(), n.get_left(), buff=0.1, color=SAFE, stroke_width=2)
+            a = Arrow(gateway.get_right(), n.get_left(), buff=0.15, color=SAFE, stroke_width=2)
             self.play(GrowArrow(a), run_time=0.2)
 
-        # Write gate
-        wl = body_text("write:*", size=18, color=WARN).shift(RIGHT * 1 + DOWN * 0.5)
-        wp = body_text("→ requires approval", size=15, color=WARN).next_to(wl, DOWN, buff=0.05)
-        gline = Line(gateway.get_right() + RIGHT * 0.3 + UP * 0.1, gateway.get_right() + RIGHT * 0.3 + DOWN * 0.9, color=WARN, stroke_width=5)
-        glbl  = body_text("GATE", size=12, color=WARN).next_to(gline, RIGHT, buff=0.1)
-        self.play(Write(VGroup(wl, wp)), Write(gline), Write(glbl), run_time=0.4)
+        # ── Write gate — hexagon with downward flow ─────────────────────────
+        gline = Line(gateway.get_right() + RIGHT * 0.4, gateway.get_right() + RIGHT * 0.4 + DOWN * 1.6,
+                     color=WARN, stroke_width=5)
+        gate  = hex_gate("GATE", WARN, 1.4).move_to(gline.get_center())
+        self.play(Write(gline), run_time=0.3)
+        self.play(Write(gate),  run_time=0.3)
 
-        # Phone
+        # "write:*" label to the right of the vertical gate line
+        wl = body_text("write:*", size=18, color=WARN).next_to(gline, RIGHT, buff=0.15)
+        wp = body_text("requires\napproval", size=13, color=WARN).next_to(wl, DOWN, buff=0.05)
+        self.play(Write(VGroup(wl, wp)), run_time=0.3)
+
+        # ── Phone below the GATE (CIBA push) ──────────────────────────────
         phone_bg = RoundedRectangle(corner_radius=0.25, width=2, height=3.8, fill_color="#000000", stroke_color=MUTED, stroke_width=2)
-        phone_sc = RoundedRectangle(corner_radius=0.1, width=1.7, height=3.1, fill_color=DARK_BOX, stroke_color=BORDER, stroke_width=1).move_to(phone_bg).shift(UP * 0.2)
+        phone_sc = RoundedRectangle(corner_radius=0.1,  width=1.7, height=3.1, fill_color=DARK_BOX, stroke_color=BORDER, stroke_width=1).move_to(phone_bg).shift(UP * 0.2)
         notch    = Rectangle(width=0.6, height=0.1, fill_color=MUTED).next_to(phone_sc, UP, buff=0.08)
-        phone = VGroup(phone_bg, phone_sc, notch).shift(DOWN * 2 + LEFT * 1.5).scale(0.6)
+        phone    = VGroup(phone_bg, phone_sc, notch).shift(DOWN * 3.2).scale(0.6)
 
-        a_p = Arrow(gline.get_bottom(), phone.get_top(), buff=0.1, color=WARN, stroke_width=2)
-        cl  = body_text("CIBA Push", size=14, color=WARN).next_to(a_p, RIGHT, buff=0.1)
+        # Arrow goes DOWN from gate to phone
+        a_p = Arrow(gline.get_bottom(), phone.get_top(), buff=0.15, color=WARN, stroke_width=2)
+        cl  = body_text("CIBA Push", size=14, color=WARN).next_to(a_p, LEFT, buff=0.1)
         self.play(Write(phone), GrowArrow(a_p), Write(cl), run_time=0.4)
 
-        # Notif on phone
+        # Notification approval card on phone screen
         nb = RoundedRectangle(corner_radius=0.08, width=1.5, height=1.0, fill_color=AUTH0, stroke_width=0).move_to(phone_sc).shift(UP * 0.5)
         nt = Text("Allow this\naction?", font_size=12, color=WHITE).move_to(nb)
         notif = VGroup(nb, nt)
         self.play(FadeIn(notif), run_time=0.3)
         self.wait(0.5)
         self.play(nb.animate.set_fill(SAFE), run_time=0.3)
+
+        # ── Legend ────────────────────────────────────────────────────────
+        legend_bg = RoundedRectangle(corner_radius=0.08, width=2.8, height=1.5, fill_color=DARK_BOX, stroke_color=BORDER, stroke_width=1).to_corner(DL, buff=0.3)
+        l1 = Text("LEGEND", font_size=11, color=TEXT, weight=BOLD).next_to(legend_bg.get_top(), UP, buff=0.15).align_to(legend_bg, LEFT).shift(RIGHT * 0.3)
+        # Green solid line sample
+        leg_ex1 = Line(LEFT * 0.3, RIGHT * 0.3, color=SAFE, stroke_width=2)
+        leg_t1  = Text("Read path (auto)", font_size=10, color=TEXT).next_to(leg_ex1, RIGHT, buff=0.1)
+        # Orange dashed line sample
+        leg_ex2 = DashedLine(LEFT * 0.3, RIGHT * 0.3, color=WARN, stroke_width=2)
+        leg_t2  = Text("Write path (approval)", font_size=10, color=TEXT).next_to(leg_ex2, RIGHT, buff=0.1)
+        leg_ex3 = RegularPolygon(n=6, radius=0.15, stroke_color=WARN, stroke_width=1.5, fill_opacity=0)
+        leg_t3  = Text("GATE (decision)", font_size=10, color=TEXT).next_to(leg_ex3, RIGHT, buff=0.1)
+        legend_items = VGroup(leg_t1, leg_ex1, leg_t2, leg_ex2, leg_t3, leg_ex3).arrange(DOWN, buff=0.08).move_to(legend_bg)
+        legend = VGroup(legend_bg, legend_items)
+        self.play(Write(legend), run_time=0.4)
+        self.wait(2)
 
         tok = body_text("Token minted → used once → revoked", size=16, color=SAFE).to_edge(DOWN, buff=0.4)
         self.play(Write(tok), run_time=0.4)
