@@ -44,7 +44,7 @@ def badge(label, color=DANGER):
     txt = Text(label, font_size=14, color=BLACK, weight=BOLD)
     bg  = RoundedRectangle(corner_radius=0.08, width=3.5, height=0.45, fill_color=color, stroke_width=0)
     bg.set_x(txt.get_x()).set_y(txt.get_y())
-    return VGroup(txt, bg)
+    return VGroup(bg, txt)
 
 
 # ═════════════════════════════════════════════════════════════════════

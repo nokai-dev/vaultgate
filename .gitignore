@@ -6,3 +6,6 @@ dist/
 coverage/
 demo.gif
 media/
+VaultGatePitch_temp.mp4
+manim/videos/*.mp4
+manim/__pycache__/
