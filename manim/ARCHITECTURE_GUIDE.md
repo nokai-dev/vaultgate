@@ -1,116 +1,111 @@
-# Architecture Diagram Guide — VaultGate / ManimGL
+# VaultGate Architecture Diagram — Visual Standards
 
-## Core Principle
-
-Architecture diagrams are communication tools, not technical准确性 exercises. If a diagram needs explanation, it has already failed. Every design decision below serves comprehension first.
+_Last updated: 2026-04-01 — based on judge/readability critique_
 
 ---
 
-## Labels & Text
+## The 5 Laws (never violate)
 
-- **Every box must have ONE clear human-readable label.** No raw IDs, hex codes, UUIDs, emoji codepoints, or internal identifiers visible on the diagram.
-- If internal IDs are needed for traceability, put them in a small subtitle or footnote — never as the primary label.
-- Font sizes must establish hierarchy: the central/core component gets the largest label; peripheral services get smaller ones.
-- Emoji is acceptable as an icon prefix ONLY when it is universally understood (e.g., 🤖 for AI Agent, 🛡 for VaultGate, 💬 for Slack). Do NOT use emoji as the sole identifier.
+### 1. ONE human-readable label per box
+- No raw IDs, hex codes, UUIDs, emoji codepoints (e.g. "01F4AC"), or internal identifiers as the primary label.
+- Internal traceability IDs go in a footnote, never as the main label.
 
----
+### 2. Legend is mandatory
+- Every diagram must have a legend box in a corner explaining **every** color, line style, and arrow shape.
+- Color pairs with line style (e.g. solid green = read, dashed orange = write+approval) so accessibility holds even without color.
 
-## Legend & Color
+### 3. No unlabeled arrows
+- Every arrow gets a label OR is explained by the legend.
+- Annotations (e.g. "requires approval") placed close to the arrow with clear visual association.
 
-- **ALWAYS include a legend box** in a corner explaining every color, line style (solid, dashed, dotted), and arrow shape used.
-- Use at most 3–4 distinct colors. Each color maps to exactly one semantic meaning:
-  - `SAFE` (#3FB950, green) = read-only / passes through freely
-  - `WARN` (#FFAA33, orange) = requires human approval / blocked
-  - `ACCENT` (#A855F7, purple) = core component / VaultGate
-  - `MUTED` (#484F58, gray) = secondary / AI Agent
-- Never rely on color alone — pair color with line style or label (e.g., dashed + "write" vs. solid + "read").
+### 4. Gate = distinct shape, first-class element
+- Any conditional routing (approve/deny, read vs. write, auth check) is a **hexagon** (or diamond). Never inline text squeezed between lines.
+- Both paths (happy and blocked/deferred) shown and labeled.
 
----
-
-## Layout & Flow
-
-- **Primary flow direction must be consistent:** either left-to-right or top-to-bottom. Never mix directions in the same diagram.
-- **Avoid arrow overlap.** If two paths share a segment, offset them visually (parallel lines with a small gap) so each path is independently traceable.
-- **The most important component (gateway, router, core service) should be visually dominant:** larger box, centered position, or heavier border.
-- Peripheral services (Slack, GitHub, Google) should be smaller and grouped together on one side.
-- The phone/notification element should be positioned BELOW the gateway, NOT floating to the side, so the approval flow reads top-to-bottom.
+### 5. Dominant core, peripheral services
+- The core gateway/router component is visually dominant: larger box, centered, heavier border.
+- Peripheral services are smaller. Hierarchy is immediately readable from font size and box dimensions alone.
 
 ---
 
-## Arrow Rules
+## Color & Line Semantic Map
 
-- **Every arrow must have a label** or be explained by the legend. Unlabeled arrows are forbidden.
-- Annotations (like "requires approval" or "passes through") must be placed close to the arrow they describe, with a clear visual association.
-- Arrow direction must match the data/control flow: agent → gateway, gateway → services.
-- The GATE element should emit a distinct arrow to the phone showing the approval request path.
+| Color | Hex | Meaning |
+|-------|-----|---------|
+| Green (SAFE) | `#3FB950` | Read path — auto-approved, no human needed |
+| Orange (WARN) | `#FFAA33` | Write path — requires human approval via CIBA |
+| Purple (ACCENT) | `#A855F7` | VaultGate core component |
+| Gray (MUTED) | `#484F58` | AI Agent (initiator), structural elements |
+| Blue (AUTH0) | `#0A84FF` | Notification card background |
+| Dark box | `#161B22` | Component background |
+| Border | `#30363D` | Component border |
+
+## Line Styles
+
+| Style | Meaning |
+|-------|---------|
+| Solid arrow | Data flow |
+| Dashed line | Write/approval path |
+| Thick line (stroke 5) | Primary path |
+| Thin line (stroke 2–3) | Secondary/annotation path |
+
+## Shape Map
+
+| Shape | Meaning |
+|-------|---------|
+| Rounded rectangle | Standard component (AI Agent, Slack, GitHub, etc.) |
+| Hexagon | GATE — decision point, conditional routing |
+| Rectangle (terminal) | Terminal/card output |
+| Circle | Dot indicator (not used in architecture scene) |
 
 ---
 
-## Gate / Decision Points
+## Layout Rules
 
-- Any conditional routing (approve/deny, read vs. write, auth check) must be represented as a **distinct shape** — a diamond, hexagon, or a visually distinct barrier/wall element — not just a label on a line.
-- The GATE in VaultGate's architecture is a critical decision point. It must be a first-class visual element, not a tiny "GATE" label squeezed between lines.
-- Show BOTH paths clearly:
-  - The "happy path" (solid green arrow, passes through)
-  - The "blocked/deferred path" (orange dashed arrow, requires approval)
-- The phone receiving the CIBA push should be directly below the GATE, with a clear downward arrow.
+### Primary flow: left → right
+- Agent far left → VaultGate center → services far right
+- Read path: horizontal green arrows from VaultGate to services
+- Write path: vertical drop from VaultGate → GATE (hexagon) → phone below
+
+### Phone position
+- Below the main row, offset to the LEFT side of center
+- CIBA push arrow goes DOWN-LEFT from GATE to phone
+
+### GATE prominence
+- Hexagon radius ≥ 2.0 units (visually dominant)
+- GATE centered below main flow, not squeezed between arrows
+- "write:*" and "requires approval" labels below the horizontal write path continuation
+
+### Service node sizing
+- VaultGate: 3.0 × 1.3 (dominant)
+- AI Agent: 2.4 × 1.1 (initiator, slightly smaller)
+- Services (Slack/GitHub/Google): 1.8 × 0.95 (peripheral)
+
+### Annotations near arrows
+- "read:*" label at top of read-path row
+- "write:* requires approval" label below write path continuation
+- Per-service labels ("messages", "repos", "contacts") above each arrow to that service
 
 ---
 
-## Anti-Patterns to Avoid
+## Anti-Patterns (instant rejection criteria)
 
-- ❌ Raw IDs or codepoints as labels (e.g., "01F6E1")
+- ❌ Raw IDs or codepoints as labels (e.g. "01F 6E1")
 - ❌ Unlabeled arrows
 - ❌ Color used without a legend
 - ❌ Overlapping arrows that can't be individually traced
-- ❌ Critical concepts (gates, decision points) rendered as small inline text
+- ❌ Critical concepts rendered as small inline text
 - ❌ All boxes the same size regardless of importance
 - ❌ Annotations floating far from the element they describe
-- ❌ Phone/approval element placed to the LEFT of the gateway (implies wrong flow direction)
-- ❌ Diagonal arrows crossing main flow paths
-- ❌ Emoji as the sole label for any component
+- ❌ GATE as a text label instead of a hexagon shape
+- ❌ Mixed primary flow directions (left-right AND top-bottom for same path)
 
 ---
 
-## Layout Template for VaultGate Architecture
+## Code Standards
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│   ┌─────────┐         ┌──────────┐                              │
-│   │  🤖     │         │   🛡     │         💬 Slack            │
-│   │ AI Agent│────────▶│ VaultGate│────────▶  📂 GitHub         │
-│   │ (MUTED) │         │ (ACCENT) │  read:*  📧 Google          │
-│   └─────────┘         └─────┬────┘                              │
-│                             │ write:*                           │
-│                             │ (orange solid, requires approval) │
-│                             ▼                                   │
-│                       ┌──────────┐                              │
-│                       │  GATE    │  ← diamond or hexagon shape  │
-│                       └────┬─────┘                              │
-│                    denied  │ approved (orange dashed)           │
-│                    path    │         ┌──────────┐              │
-│                            └────────▶│  📱     │              │
-│                                      │  Phone   │              │
-│                                      │  CIBA    │              │
-│                                      └──────────┘              │
-│                                                                 │
-│  ┌─────────────────┐                                            │
-│  │ LEGEND          │                                            │
-│  │ ─── green = read│                                            │
-│  │ ─── orange = req│                                            │
-│  │ approval        │                                            │
-│  └─────────────────┘                                            │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## ManimGL Implementation Notes
-
-- Use `node(name, emoji, color, width, height)` helper for service boxes
-- Use `Arrow(source.get_right(), target.get_left(), buff=0.2)` for directional arrows
-- Group related elements (services: Slack, GitHub, Google) with `VGroup` and position together
-- The GATE line should be a distinct `Line` object with a thicker stroke, not just text
-- The phone notification approval should be rendered as a distinct card appearing on the phone screen
-- Always add a legend box in the lower-left corner using `RoundedRectangle` + `Text`
+- Helper `node_clean(label, icon, color, w, h)` — no codepoint label, box+icon+label only
+- Helper `hex_gate(label, color, size)` — RegularPolygon(n=6) with label inside
+- All text uses `font="Helvetica"` for clean rendering
+- `buff` values on arrows prevent label overlap
+- Legend: minimum 3.2 × 1.9 units, lower-left corner, 4-row layout
