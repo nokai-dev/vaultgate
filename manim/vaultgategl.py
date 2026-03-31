@@ -225,13 +225,13 @@ class VaultGatePitch(Scene):
         self.wait(2)
         self.wipe()
 
-        # ── Layout (left → right: Agent → VaultGate → Services) ──────────
-        # Y positions: services at Y=1.8, agent at Y=0, phone below at Y=-2.2
-        agent    = node("AI Agent", "🤖", MUTED,  2.2, 1.0).shift(LEFT * 5.5 + DOWN * 0.2)
-        gateway  = node("VaultGate", "🛡", ACCENT, 2.6, 1.2).shift(DOWN * 0.2)
-        slack    = node("Slack",     "💬", SAFE,   1.6, 0.9).shift(RIGHT * 4.5 + UP * 1.8)
-        github   = node("GitHub",   "📂", SAFE,   1.6, 0.9).shift(RIGHT * 4.5)
-        google   = node("Google",   "📧", SAFE,   1.6, 0.9).shift(RIGHT * 4.5 + DOWN * 1.8)
+        # ── Main flow row (Y = +0.8) ──────────────────────────────────────
+        # Agent far left → VaultGate center → services far right
+        agent    = node("AI Agent", "🤖", MUTED,  2.2, 1.0).shift(LEFT * 5.5 + DOWN * 0.5)
+        gateway  = node("VaultGate", "🛡", ACCENT, 2.6, 1.2).shift(DOWN * 0.5)
+        slack    = node("Slack",     "💬", SAFE,   1.6, 0.9).shift(RIGHT * 4.5 + UP * 2.0)
+        github   = node("GitHub",   "📂", SAFE,   1.6, 0.9).shift(RIGHT * 4.5 + UP * 0.3)
+        google   = node("Google",   "📧", SAFE,   1.6, 0.9).shift(RIGHT * 4.5 + DOWN * 1.4)
 
         self.play(Write(agent),   run_time=0.4)
         self.play(Write(gateway), run_time=0.4)
@@ -240,35 +240,37 @@ class VaultGatePitch(Scene):
         a1 = Arrow(agent.get_right(), gateway.get_left(), buff=0.2, color=MUTED, stroke_width=3)
         self.play(GrowArrow(a1), run_time=0.4)
 
-        # Read path label (above gateway-to-services)
-        rl = body_text("read:*", size=18, color=SAFE).shift(RIGHT * 0.8 + UP * 2.3)
+        # Read path label + VaultGate → services
+        rl = body_text("read:*", size=18, color=SAFE).shift(RIGHT * 1.0 + UP * 1.2)
         self.play(Write(rl), Write(slack), Write(github), Write(google), run_time=0.4)
-
-        # VaultGate → services (all at same Y, clean horizontal arrows)
         for n in [slack, github, google]:
             a = Arrow(gateway.get_right(), n.get_left(), buff=0.15, color=SAFE, stroke_width=2)
             self.play(GrowArrow(a), run_time=0.2)
 
-        # ── Write gate — hexagon with downward flow ─────────────────────────
-        gline = Line(gateway.get_right() + RIGHT * 0.4, gateway.get_right() + RIGHT * 0.4 + DOWN * 1.6,
-                     color=WARN, stroke_width=5)
-        gate  = hex_gate("GATE", WARN, 1.4).move_to(gline.get_center())
-        self.play(Write(gline), run_time=0.3)
-        self.play(Write(gate),  run_time=0.3)
-
-        # "write:*" label to the right of the vertical gate line
-        wl = body_text("write:*", size=18, color=WARN).next_to(gline, RIGHT, buff=0.15)
+        # ── Write gate row (Y = −1.8) ─────────────────────────────────────
+        # Vertical line from gateway right → down to write-gate
+        gline_top = gateway.get_right() + RIGHT * 0.5
+        gline = Line(gline_top, gline_top + DOWN * 1.2, color=WARN, stroke_width=5)
+        # Horizontal line from the vertical drop point left to gate, right to label area
+        gate_pt = gline.get_bottom() + LEFT * 0.8
+        hline = Line(gate_pt + LEFT * 0.5, gate_pt + RIGHT * 2.5, color=WARN, stroke_width=5)
+        gate  = hex_gate("GATE", WARN, 1.5).move_to(gate_pt)
+        # "write:*" label right of the horizontal line
+        wl = body_text("write:*", size=18, color=WARN).next_to(hline, DOWN, buff=0.2)
         wp = body_text("requires\napproval", size=13, color=WARN).next_to(wl, DOWN, buff=0.05)
+        self.play(Write(gline), run_time=0.2)
+        self.play(Write(hline), run_time=0.2)
+        self.play(Write(gate),  run_time=0.3)
         self.play(Write(VGroup(wl, wp)), run_time=0.3)
 
-        # ── Phone below the GATE (CIBA push) ──────────────────────────────
+        # ── Phone below (Y = −3.5), LEFT side of center ──────────────────
         phone_bg = RoundedRectangle(corner_radius=0.25, width=2, height=3.8, fill_color="#000000", stroke_color=MUTED, stroke_width=2)
         phone_sc = RoundedRectangle(corner_radius=0.1,  width=1.7, height=3.1, fill_color=DARK_BOX, stroke_color=BORDER, stroke_width=1).move_to(phone_bg).shift(UP * 0.2)
         notch    = Rectangle(width=0.6, height=0.1, fill_color=MUTED).next_to(phone_sc, UP, buff=0.08)
-        phone    = VGroup(phone_bg, phone_sc, notch).shift(DOWN * 3.2).scale(0.6)
+        phone    = VGroup(phone_bg, phone_sc, notch).shift(LEFT * 2.5 + DOWN * 3.8).scale(0.6)
 
-        # Arrow goes DOWN from gate to phone
-        a_p = Arrow(gline.get_bottom(), phone.get_top(), buff=0.15, color=WARN, stroke_width=2)
+        # Arrow goes DOWN-LEFT from gate point to phone top
+        a_p = Arrow(gate_pt + DOWN * 0.3, phone.get_top(), buff=0.15, color=WARN, stroke_width=2)
         cl  = body_text("CIBA Push", size=14, color=WARN).next_to(a_p, LEFT, buff=0.1)
         self.play(Write(phone), GrowArrow(a_p), Write(cl), run_time=0.4)
 
