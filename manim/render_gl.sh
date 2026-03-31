@@ -9,6 +9,9 @@ export EGL_PLATFORM=offscreen
 export LIBGL_ALWAYS_SOFTWARE=1
 cd "$(dirname "$0")"
 
+# CRITICAL: Clear partial movie cache so code changes always take effect
+rm -rf media/videos/vaultgate_pitch/1080p60/partial_movie_files/
+
 /usr/bin/python3 /usr/local/bin/manimgl -w --${Q} --fps=60 vaultgategl.py VaultGatePitch
 
 # Trim to actual animation length (animation ends at ~52.8s)
