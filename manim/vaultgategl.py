@@ -240,27 +240,53 @@ class VaultGatePitch(Scene):
         self.play(Write(vaultgw), run_time=0.4)
         self.play(GrowArrow(Arrow(agent.get_right(), vaultgw.get_left(), buff=0.5, color=MUTED, stroke_width=5)), run_time=0.4)
 
-        # ── READ PATH — Y = +2.2, services spread wider ──────────────────
-        # Spread services further apart, more space between them
+        # ── READ PATH — Y = +2.2 and Y = +0.5 ─────────────────────────────
+        # Staggered Y levels so fan-out arrows have distinct exit points from vaultgw
         slack  = self.node_clean("Slack",   "💬", SAFE, 1.7, 0.9).shift(RIGHT * 3.8 + UP * 2.2)
         github = self.node_clean("GitHub", "📂", SAFE, 1.7, 0.9).shift(RIGHT * 6.2 + UP * 2.2)
         google = self.node_clean("Google", "📧", SAFE, 1.7, 0.9).shift(RIGHT * 3.8 + UP * 0.5)
         drive  = self.node_clean("Drive",   "📁", SAFE, 1.7, 0.9).shift(RIGHT * 6.2 + UP * 0.5)
 
-        # "read:*" label high above the read arrows
-        rl = body_text("read:*", size=22, color=SAFE).shift(UP * 3.0)
-        self.play(Write(rl), run_time=0.3)
         self.play(Write(slack), Write(github), Write(google), Write(drive), run_time=0.5)
 
-        # Long arrows from VaultGate → each service (generous buff = breathing room)
-        read_services = [(slack, "msg"), (github, "repos"), (google, "files"), (drive, "docs")]
-        for n, lbl in read_services:
-            # Arrow with buff=0.5 (spacious)
-            arr = Arrow(vaultgw.get_right(), n.get_left(), buff=0.5, color=SAFE, stroke_width=3)
-            self.play(GrowArrow(arr), run_time=0.3)
-            # Label well above the arrow, not touching it
-            al = body_text(lbl, size=13, color=SAFE).next_to(arr, UP, buff=0.25)
-            self.play(Write(al), run_time=0.2)
+        # Vaultgw right edge X (used as origin for all read arrows)
+        vg_right = vaultgw.get_right()
+
+        # ── Row 1 (Y = +2.2): Slack and GitHub — arrows go RIGHT then DOWN
+        # Slack arrow: horizontal segment then drop to slack's Y
+        slack_origin = vg_right + RIGHT * 0.1 + UP * 2.2
+        slack_arr = Arrow(slack_origin, slack.get_left(), buff=0.3, color=SAFE, stroke_width=3)
+        # "read: msg" label directly ON the arrow, mid-point
+        slack_lbl = body_text("msg", size=12, color=SAFE)
+        slack_lbl.move_to(midpoint(slack_origin, slack.get_left())).shift(DOWN * 0.35)
+        self.play(GrowArrow(slack_arr), run_time=0.3)
+        self.play(Write(slack_lbl), run_time=0.2)
+
+        github_origin = vg_right + RIGHT * 0.1 + UP * 2.2
+        github_arr = Arrow(github_origin, github.get_left(), buff=0.3, color=SAFE, stroke_width=3)
+        github_lbl = body_text("repos", size=12, color=SAFE)
+        github_lbl.move_to(midpoint(github_origin, github.get_left())).shift(DOWN * 0.35)
+        self.play(GrowArrow(github_arr), run_time=0.3)
+        self.play(Write(github_lbl), run_time=0.2)
+
+        # "read:*" path label — on the horizontal bus segment (Y = +2.2)
+        rl = body_text("read:*", size=14, color=SAFE).next_to(vg_right, UP, buff=1.5)
+        self.play(Write(rl), run_time=0.2)
+
+        # ── Row 2 (Y = +0.5): Google and Drive — arrows go RIGHT then UP
+        google_origin = vg_right + RIGHT * 0.1 + UP * 0.5
+        google_arr = Arrow(google_origin, google.get_left(), buff=0.3, color=SAFE, stroke_width=3)
+        google_lbl = body_text("files", size=12, color=SAFE)
+        google_lbl.move_to(midpoint(google_origin, google.get_left())).shift(UP * 0.35)
+        self.play(GrowArrow(google_arr), run_time=0.3)
+        self.play(Write(google_lbl), run_time=0.2)
+
+        drive_origin = vg_right + RIGHT * 0.1 + UP * 0.5
+        drive_arr = Arrow(drive_origin, drive.get_left(), buff=0.3, color=SAFE, stroke_width=3)
+        drive_lbl = body_text("docs", size=12, color=SAFE)
+        drive_lbl.move_to(midpoint(drive_origin, drive.get_left())).shift(UP * 0.35)
+        self.play(GrowArrow(drive_arr), run_time=0.3)
+        self.play(Write(drive_lbl), run_time=0.2)
 
         # ── WRITE PATH — Y = -1.8, below main row ─────────────────────────
         # T-junction: short rightward connector → drop → GATE → phone
@@ -286,14 +312,22 @@ class VaultGatePitch(Scene):
         notch    = Rectangle(width=0.7, height=0.12, fill_color=MUTED).next_to(phone_sc, UP, buff=0.1)
         phone    = VGroup(phone_bg, phone_sc, notch).shift(LEFT * 2.8 + DOWN * 4.0).scale(0.7)
 
-        # Arrow from GATE down to phone
+        # Arrow from GATE down to phone — annotation directly on arrow
         gate_btm = gate_center + DOWN * 1.25
         phone_top = phone.get_top() + UP * 0.1
+        ciba_arr = Arrow(gate_btm, phone_top, buff=0.2, color=WARN, stroke_width=3)
         self.play(Write(phone), run_time=0.3)
-        self.play(GrowArrow(Arrow(gate_btm, phone_top, buff=0.2, color=WARN, stroke_width=3)), run_time=0.4)
-        cl = body_text("CIBA Push", size=16, color=WARN).next_to(
-            Arrow(gate_btm, phone_top, buff=0.2), LEFT, buff=0.2)
+        self.play(GrowArrow(ciba_arr), run_time=0.4)
+        # Label directly on arrow — midpoint, to the LEFT
+        cl = body_text("CIBA Push", size=14, color=WARN)
+        cl.move_to(midpoint(gate_btm, phone_top)).shift(LEFT * 0.5)
         self.play(Write(cl), run_time=0.3)
+
+        # GATE entry/exit labels — shown near the hexagon edges
+        gate_in  = body_text("write:*", size=13, color=WARN).move_to(gate_center + LEFT * 2.0 + DOWN * 0.2)
+        gate_out = body_text("denied", size=13, color=DANGER).move_to(gate_center + RIGHT * 2.2 + DOWN * 0.2)
+        self.play(Write(gate_in), run_time=0.2)
+        self.play(Write(gate_out), run_time=0.2)
 
         # Notification card — spaced inside phone
         nb = RoundedRectangle(corner_radius=0.1, width=1.6, height=1.1, fill_color=AUTH0, stroke_width=0).move_to(phone_sc).shift(UP * 0.9)
