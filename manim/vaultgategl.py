@@ -126,16 +126,15 @@ class VaultGatePitch(Scene):
         db = VGroup(db_body, db_top, db_lbl, db_stat).shift(LEFT * 3)
 
         info2 = VGroup(*[
-            body_text(line, size=20, color=TEXT if i < 2 else (DANGER if any(w in line for w in ["FREEZE","CAPS","LIED"]) else MUTED))
-            for i, line in enumerate([
-                "Replit AI agent deletes",
-                "entire production database", "",
-                "During active CODE FREEZE",
-                "Ignored ALL CAPS instructions", "",
-                'Agent admitted: "catastrophic',
-                'failure... destroyed months"', "",
+            body_text(line, size=20, color=DANGER if any(w in line for w in ["FREEZE","CAPS","LIED","PROD","MONTHS","RECOVERY"]) else TEXT)
+            for line in [
+                "Replit AI agent deletes entire production DB",
+                "(during active CODE FREEZE)",
+                "",
+                'Agent admitted: "catastrophic failure... destroyed months"',
+                "",
                 "Then LIED about recovery",
-            ])
+            ]
         ]).arrange(DOWN, buff=0.1, aligned_edge=LEFT).shift(RIGHT * 2.2 + UP * 0.5)
 
         self.play(Write(inc2), Write(db), Write(info2), run_time=0.8)
