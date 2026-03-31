@@ -223,122 +223,116 @@ class VaultGatePitch(Scene):
         return VGroup(box, i, l)
 
     def scene_3_vaultgate(self):
-        # ── Title ──────────────────────────────────────────────────────────
-        shield = Text("🛡", font_size=72).shift(UP * 0.5)
-        logo   = heading("VaultGate", size=64, color=ACCENT).next_to(shield, DOWN, buff=0.15)
-        tag    = body_text("Human-in-the-Loop Access for AI Agents", size=20, color=MUTED).next_to(logo, DOWN, buff=0.25)
-        self.play(FadeIn(shield, scale=0.5), run_time=0.8)
-        self.play(Write(VGroup(logo, tag)), run_time=0.6)
+        # ── Title — compact, top band ─────────────────────────────────────
+        shield = Text("🛡", font_size=48).shift(UP * 3.5)
+        logo   = heading("VaultGate", size=42, color=ACCENT).next_to(shield, RIGHT, buff=0.3).shift(UP * 3.5)
+        tag    = body_text("Human-in-the-Loop Access for AI Agents", size=17, color=MUTED).next_to(logo, DOWN, buff=0.1)
+        self.play(FadeIn(shield, scale=0.5), run_time=0.6)
+        self.play(Write(VGroup(logo, tag)), run_time=0.5)
         self.wait(1.5)
         self.wipe()
 
-        # ── Layout ─────────────────────────────────────────────────────────
-        # Y positions: read path row at Y=+1.4, main row at Y=0, write path below
-        # Agent left → VaultGate center → services right
-        agent   = self.node_clean("AI Agent",  "🤖",  MUTED,  2.4, 1.1).shift(LEFT * 5.2 + DOWN * 0.3)
-        vaultgw = self.node_clean("VaultGate", "🛡", ACCENT, 3.0, 1.3).shift(DOWN * 0.3)
-        slack   = self.node_clean("Slack",     "💬",  SAFE,  1.8, 0.95).shift(RIGHT * 4.8 + UP * 2.1)
-        github  = self.node_clean("GitHub",   "📂",  SAFE,  1.8, 0.95).shift(RIGHT * 4.8 + UP * 0.2)
-        google  = self.node_clean("Google",   "📧",  SAFE,  1.8, 0.95).shift(RIGHT * 4.8 + DOWN * 1.7)
+        # ── Main row Y = 0 — Agent left, VaultGate center ─────────────────
+        agent   = self.node_clean("AI Agent",  "🤖",  MUTED,  2.2, 1.0).shift(LEFT * 5.0)
+        vaultgw = self.node_clean("VaultGate", "🛡", ACCENT, 3.2, 1.4).shift(LEFT * 0.5)
 
         self.play(Write(agent),   run_time=0.4)
         self.play(Write(vaultgw), run_time=0.4)
+        self.play(GrowArrow(Arrow(agent.get_right(), vaultgw.get_left(), buff=0.5, color=MUTED, stroke_width=5)), run_time=0.4)
 
-        # Agent → VaultGate (thick muted arrow)
-        self.play(GrowArrow(Arrow(agent.get_right(), vaultgw.get_left(), buff=0.25, color=MUTED, stroke_width=4)), run_time=0.4)
+        # ── READ PATH — Y = +2.2, services spread wider ──────────────────
+        # Spread services further apart, more space between them
+        slack  = self.node_clean("Slack",   "💬", SAFE, 1.7, 0.9).shift(RIGHT * 3.8 + UP * 2.2)
+        github = self.node_clean("GitHub", "📂", SAFE, 1.7, 0.9).shift(RIGHT * 6.2 + UP * 2.2)
+        google = self.node_clean("Google", "📧", SAFE, 1.7, 0.9).shift(RIGHT * 3.8 + UP * 0.5)
+        drive  = self.node_clean("Drive",   "📁", SAFE, 1.7, 0.9).shift(RIGHT * 6.2 + UP * 0.5)
 
-        # ── READ PATH (green, top) ─────────────────────────────────────────
-        # "read:*" label + dashed annotation near services
-        rl = body_text("read:*", size=20, color=SAFE).shift(RIGHT * 0.5 + UP * 1.8)
-        self.play(Write(rl), Write(slack), Write(github), Write(google), run_time=0.5)
+        # "read:*" label high above the read arrows
+        rl = body_text("read:*", size=22, color=SAFE).shift(UP * 3.0)
+        self.play(Write(rl), run_time=0.3)
+        self.play(Write(slack), Write(github), Write(google), Write(drive), run_time=0.5)
 
-        # VaultGate → services (solid green)
-        for n in [slack, github, google]:
-            self.play(GrowArrow(Arrow(vaultgw.get_right(), n.get_left(), buff=0.15, color=SAFE, stroke_width=2.5)), run_time=0.25)
-
-        # Small label above each green arrow
-        for n, lbl in [(slack, "messages"), (github, "repos"), (google, "contacts")]:
-            al = body_text(lbl, size=12, color=SAFE).next_to(
-                Line(vaultgw.get_right(), n.get_left(), buff=0.15), UP, buff=0.08)
+        # Long arrows from VaultGate → each service (generous buff = breathing room)
+        read_services = [(slack, "msg"), (github, "repos"), (google, "files"), (drive, "docs")]
+        for n, lbl in read_services:
+            # Arrow with buff=0.5 (spacious)
+            arr = Arrow(vaultgw.get_right(), n.get_left(), buff=0.5, color=SAFE, stroke_width=3)
+            self.play(GrowArrow(arr), run_time=0.3)
+            # Label well above the arrow, not touching it
+            al = body_text(lbl, size=13, color=SAFE).next_to(arr, UP, buff=0.25)
             self.play(Write(al), run_time=0.2)
 
-        # ── WRITE PATH (orange, below main row) ─────────────────────────────
-        # Clean T-junction: vertical drop from VaultGate center, then GATE
-        drop_x = vaultgw.get_right() + RIGHT * 0.6   # x=0.9 approx
-        drop_top = drop_x + UP * 0
-        vline = Line(vaultgw.get_right() + RIGHT * 0.6, drop_x + DOWN * 1.0, color=WARN, stroke_width=5)
-        gate_center = vline.get_bottom() + LEFT * 0.9   # GATE sits to the left of the drop
+        # ── WRITE PATH — Y = -1.8, below main row ─────────────────────────
+        # T-junction: short rightward connector → drop → GATE → phone
+        conn_end = vaultgw.get_right() + RIGHT * 0.7
+        vline = Line(vaultgw.get_right() + RIGHT * 0.5, conn_end + DOWN * 1.8, color=WARN, stroke_width=5)
+        gate_center = vline.get_bottom() + LEFT * 1.2
+        gate = hex_gate("GATE", WARN, 2.5).move_to(gate_center)
 
-        # GATE — THE star of the diagram (big hexagon)
-        gate = hex_gate("GATE", WARN, 2.2).move_to(gate_center)
-
-        # Horizontal continuation of write path (right of gate toward label)
-        write_h = Line(gate_center + RIGHT * 0.9, drop_x + RIGHT * 2.0, color=WARN, stroke_width=5)
-
-        # "write:* requires approval" label below write_h
-        wl = body_text("write:*", size=20, color=WARN).next_to(write_h, DOWN, buff=0.25)
-        wp = body_text("requires approval", size=14, color=WARN).next_to(wl, DOWN, buff=0.05)
+        # Write path continuation: right from gate
+        write_h = Line(gate_center + RIGHT * 1.25, conn_end, color=WARN, stroke_width=5)
+        # "write:*" label below the horizontal line, well spaced
+        wl = body_text("write:*", size=22, color=WARN).next_to(write_h, DOWN, buff=0.4)
+        wp = body_text("requires approval", size=15, color=WARN).next_to(wl, DOWN, buff=0.1)
 
         self.play(Write(vline),  run_time=0.3)
         self.play(Write(write_h), run_time=0.3)
         self.play(Write(gate),   run_time=0.5)
         self.play(Write(VGroup(wl, wp)), run_time=0.3)
 
-        # ── PHONE (CIBA push target) — bottom left ───────────────────────────
-        phone_bg = RoundedRectangle(corner_radius=0.25, width=2, height=3.8, fill_color="#000000", stroke_color=MUTED, stroke_width=2)
-        phone_sc = RoundedRectangle(corner_radius=0.1,  width=1.7, height=3.1, fill_color=DARK_BOX, stroke_color=BORDER, stroke_width=1).move_to(phone_bg).shift(UP * 0.2)
-        notch    = Rectangle(width=0.6, height=0.1, fill_color=MUTED).next_to(phone_sc, UP, buff=0.08)
-        phone    = VGroup(phone_bg, phone_sc, notch).shift(LEFT * 3.2 + DOWN * 3.8).scale(0.65)
+        # ── PHONE — bottom center-left, not crowded ─────────────────────────
+        phone_bg = RoundedRectangle(corner_radius=0.25, width=2.2, height=4.2, fill_color="#000000", stroke_color=MUTED, stroke_width=2)
+        phone_sc = RoundedRectangle(corner_radius=0.1,  width=1.9, height=3.4, fill_color=DARK_BOX, stroke_color=BORDER, stroke_width=1).move_to(phone_bg).shift(UP * 0.25)
+        notch    = Rectangle(width=0.7, height=0.12, fill_color=MUTED).next_to(phone_sc, UP, buff=0.1)
+        phone    = VGroup(phone_bg, phone_sc, notch).shift(LEFT * 2.8 + DOWN * 4.0).scale(0.7)
 
-        # Arrow from GATE down-left to phone
-        gate_bottom = gate_center + DOWN * 0.75
-        phone_top   = phone.get_top()
+        # Arrow from GATE down to phone
+        gate_btm = gate_center + DOWN * 1.25
+        phone_top = phone.get_top() + UP * 0.1
         self.play(Write(phone), run_time=0.3)
-        self.play(GrowArrow(Arrow(gate_bottom, phone_top, buff=0.15, color=WARN, stroke_width=2.5)), run_time=0.4)
-        cl = body_text("CIBA Push", size=15, color=WARN).next_to(
-            Arrow(gate_bottom, phone_top, buff=0.15), LEFT, buff=0.1)
+        self.play(GrowArrow(Arrow(gate_btm, phone_top, buff=0.2, color=WARN, stroke_width=3)), run_time=0.4)
+        cl = body_text("CIBA Push", size=16, color=WARN).next_to(
+            Arrow(gate_btm, phone_top, buff=0.2), LEFT, buff=0.2)
         self.play(Write(cl), run_time=0.3)
 
-        # Notification card on phone screen
-        nb = RoundedRectangle(corner_radius=0.08, width=1.5, height=1.0, fill_color=AUTH0, stroke_width=0).move_to(phone_sc).shift(UP * 0.6)
-        nt = Text("Allow this\naction?", font_size=13, color=WHITE, weight=BOLD).move_to(nb)
+        # Notification card — spaced inside phone
+        nb = RoundedRectangle(corner_radius=0.1, width=1.6, height=1.1, fill_color=AUTH0, stroke_width=0).move_to(phone_sc).shift(UP * 0.9)
+        nt = Text("Allow this\naction?", font_size=14, color=WHITE, weight=BOLD).move_to(nb)
         notif = VGroup(nb, nt)
         self.play(FadeIn(notif), run_time=0.4)
         self.wait(0.5)
         self.play(nb.animate.set_fill(SAFE), run_time=0.4)
 
-        # ── LEGEND (lower-left, full semantics) ─────────────────────────────
-        legend_bg = RoundedRectangle(corner_radius=0.1, width=3.2, height=1.9,
-                                     fill_color=DARK_BOX, stroke_color=BORDER, stroke_width=1.5).to_corner(DL, buff=0.3)
-        leg_title = Text("LEGEND", font_size=12, color=TEXT, weight=BOLD).to_corner(DL, buff=0.5)
+        # ── LEGEND — bottom right, spacious ────────────────────────────────
+        legend_bg = RoundedRectangle(corner_radius=0.12, width=3.6, height=2.1,
+                                     fill_color=DARK_BOX, stroke_color=BORDER, stroke_width=1.5).to_corner(DR, buff=0.4)
+        leg_items = VGroup()
 
-        # Row 1: solid green line
-        r1_line = Line(LEFT * 0.4, RIGHT * 0.4, color=SAFE, stroke_width=3)
-        r1_txt  = Text("Solid green = read (auto)", font_size=11, color=TEXT).next_to(r1_line, RIGHT, buff=0.15)
+        def legend_row(shape, label):
+            row = VGroup(shape, Text(label, font_size=12, color=TEXT))
+            leg_items.add(row)
 
-        # Row 2: dashed orange line
-        r2_line = DashedLine(LEFT * 0.4, RIGHT * 0.4, color=WARN, stroke_width=3)
-        r2_txt  = Text("Dashed orange = write (approval)", font_size=11, color=TEXT).next_to(r2_line, RIGHT, buff=0.15)
+        # Row 1: solid green = read
+        r1_line = Line(LEFT * 0.5, RIGHT * 0.5, color=SAFE, stroke_width=4)
+        legend_row(r1_line, "Solid green = read (auto)")
 
-        # Row 3: hexagon
-        r3_hex  = RegularPolygon(n=6, radius=0.2, stroke_color=WARN, stroke_width=2, fill_opacity=0)
-        r3_txt  = Text("Hexagon = GATE (decision)", font_size=11, color=TEXT).next_to(r3_hex, RIGHT, buff=0.15)
+        # Row 2: dashed orange = write
+        r2_line = DashedLine(LEFT * 0.5, RIGHT * 0.5, color=WARN, stroke_width=4)
+        legend_row(r2_line, "Dashed orange = write (approval)")
 
-        # Row 4: arrow
-        r4_arr  = Arrow(LEFT * 0.3, RIGHT * 0.3, buff=0, color=TEXT, stroke_width=2)
-        r4_txt  = Text("Arrow = data flow", font_size=11, color=TEXT).next_to(r4_arr, RIGHT, buff=0.15)
+        # Row 3: hexagon = GATE
+        r3_hex = RegularPolygon(n=6, radius=0.25, stroke_color=WARN, stroke_width=2, fill_opacity=0)
+        legend_row(r3_hex, "Hexagon = GATE (decision)")
 
-        legend_items = VGroup(
-            VGroup(r1_line, r1_txt),
-            VGroup(r2_line, r2_txt),
-            VGroup(r3_hex,  r3_txt),
-            VGroup(r4_arr,  r4_txt),
-        ).arrange(DOWN, buff=0.18).move_to(legend_bg)
+        # Row 4: arrow = data flow
+        r4_arr = Arrow(LEFT * 0.4, RIGHT * 0.4, buff=0, color=TEXT, stroke_width=3)
+        legend_row(r4_arr, "Arrow = data flow")
 
-        self.play(Write(VGroup(legend_bg, legend_items)), run_time=0.5)
+        leg_items.arrange(DOWN, buff=0.25).move_to(legend_bg)
+        self.play(Write(VGroup(legend_bg, leg_items)), run_time=0.5)
 
-        # Bottom token summary
-        tok = body_text("Token minted → used once → revoked", size=16, color=SAFE).to_edge(DOWN, buff=0.4)
+        # Bottom token summary — spaced from everything
+        tok = body_text("Token minted → used once → revoked", size=17, color=SAFE).to_edge(DOWN, buff=0.5)
         self.play(Write(tok), run_time=0.4)
         self.wait(2)
         self.wipe()
