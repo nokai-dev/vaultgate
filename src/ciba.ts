@@ -22,6 +22,8 @@ export interface CIBAConfig {
   loginHint?: string;
   /** Demo mode: simulate CIBA flow without real Auth0 calls (for testing) */
   demoMode?: boolean;
+  /** Demo mode: number of poll cycles before auto-approval fires (default: 3) */
+  demoApprovalDelay?: number;
 }
 
 export type CIBAStatus = 'approved' | 'denied' | 'expired' | 'pending';
@@ -43,10 +45,22 @@ export class CIBAHandler {
   private demoMode: boolean = false;
 
   constructor(config: CIBAConfig) {
-    this.config = config;
+    // Resolve demoApprovalDelay: explicit config > env var > default (3)
+    // TypeScript's Partial<T> makes omitted fields undefined — we must distinguish
+    // "user didn't pass it" (undefined) from "user explicitly passed undefined".
+    // We check env var only when config value is truly absent (undefined).
+    let resolvedDelay = config.demoApprovalDelay;
+    if (resolvedDelay === undefined) {
+      const envDelay = process.env.DEMO_APPROVAL_DELAY_POLLS;
+      resolvedDelay = envDelay !== undefined && !isNaN(Number(envDelay))
+        ? Number(envDelay)
+        : 3;
+    }
+
+    this.config = { ...config, demoApprovalDelay: resolvedDelay };
 
     // Determine mode: explicit demoMode flag, or missing credentials
-    this.demoMode = config.demoMode ?? (!config.domain || !config.clientId || !config.clientSecret);
+    this.demoMode = this.config.demoMode ?? (!config.domain || !config.clientId || !config.clientSecret);
 
     if (!this.demoMode) {
       this.auth0 = new AuthenticationClient({
@@ -217,7 +231,9 @@ export class CIBAHandler {
     // Demo mode: simulate the CIBA poll loop with auto-approval after a few polls
     const startTime = Date.now();
     const maxPolls = Math.floor(this.config.timeoutMs / this.config.intervalMs);
-    const demoApprovalDelay = Math.min(3, maxPolls);
+    // Respect the configured delay; if it exceeds maxPolls the timeout will
+    // naturally prevent approval (no cap — the while loop exits before that poll)
+    const demoApprovalDelay = this.config.demoApprovalDelay ?? 3;
     let pollCount = 0;
 
     console.log('╔══════════════════════════════════════════════════════════════╗');

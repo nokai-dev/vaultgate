@@ -5,6 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    setupFiles: ['./test-setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -23,6 +24,6 @@ export default defineConfig({
       },
     },
     testTimeout: 30_000,
-    hookTimeout: 300_000, // CLI integration needs longer (TypeScript compilation)
+    hookTimeout: 300_000,
   },
 });
