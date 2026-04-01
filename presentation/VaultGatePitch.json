@@ -1,0 +1,100 @@
+{
+  "slides": [
+    {
+      "loop": false,
+      "auto_next": false,
+      "playback_rate": 1.0,
+      "reversed_playback_rate": 1.0,
+      "notes": "",
+      "dedent_notes": true,
+      "skip_animations": false,
+      "src": null,
+      "direction": "horizontal",
+      "file": "slides/files/VaultGatePitch/915c973d3a0cf87bd184e4a6ffa469a18c7c4980d727684d47a904e75b0d8453.mp4",
+      "rev_file": "slides/files/VaultGatePitch/915c973d3a0cf87bd184e4a6ffa469a18c7c4980d727684d47a904e75b0d8453_reversed.mp4"
+    },
+    {
+      "loop": false,
+      "auto_next": false,
+      "playback_rate": 1.0,
+      "reversed_playback_rate": 1.0,
+      "notes": "",
+      "dedent_notes": true,
+      "skip_animations": false,
+      "src": null,
+      "direction": "horizontal",
+      "file": "slides/files/VaultGatePitch/fff1d27871f9ed61c49eb6a9cd288cd164379bfc243ef1780042ddac86794707.mp4",
+      "rev_file": "slides/files/VaultGatePitch/fff1d27871f9ed61c49eb6a9cd288cd164379bfc243ef1780042ddac86794707_reversed.mp4"
+    },
+    {
+      "loop": false,
+      "auto_next": false,
+      "playback_rate": 1.0,
+      "reversed_playback_rate": 1.0,
+      "notes": "",
+      "dedent_notes": true,
+      "skip_animations": false,
+      "src": null,
+      "direction": "horizontal",
+      "file": "slides/files/VaultGatePitch/df57fb3b92ffababa0c5de00213dba91836f6952b58e563953f99e4f2061af46.mp4",
+      "rev_file": "slides/files/VaultGatePitch/df57fb3b92ffababa0c5de00213dba91836f6952b58e563953f99e4f2061af46_reversed.mp4"
+    },
+    {
+      "loop": false,
+      "auto_next": false,
+      "playback_rate": 1.0,
+      "reversed_playback_rate": 1.0,
+      "notes": "",
+      "dedent_notes": true,
+      "skip_animations": false,
+      "src": null,
+      "direction": "horizontal",
+      "file": "slides/files/VaultGatePitch/919376c124fa446e69609005b7d532c9c6eff6d72298fc49e4999669fb69d0b3.mp4",
+      "rev_file": "slides/files/VaultGatePitch/919376c124fa446e69609005b7d532c9c6eff6d72298fc49e4999669fb69d0b3_reversed.mp4"
+    },
+    {
+      "loop": false,
+      "auto_next": false,
+      "playback_rate": 1.0,
+      "reversed_playback_rate": 1.0,
+      "notes": "",
+      "dedent_notes": true,
+      "skip_animations": false,
+      "src": null,
+      "direction": "horizontal",
+      "file": "slides/files/VaultGatePitch/07db63c14bc979a5365f2bce9dd4c8fe0861439c853767504885b9a53a33507e.mp4",
+      "rev_file": "slides/files/VaultGatePitch/07db63c14bc979a5365f2bce9dd4c8fe0861439c853767504885b9a53a33507e_reversed.mp4"
+    },
+    {
+      "loop": false,
+      "auto_next": false,
+      "playback_rate": 1.0,
+      "reversed_playback_rate": 1.0,
+      "notes": "",
+      "dedent_notes": true,
+      "skip_animations": false,
+      "src": null,
+      "direction": "horizontal",
+      "file": "slides/files/VaultGatePitch/e35cbf479fd299c0e3a1f4fdfc0055045f0ce753712079e29b944993184b13f1.mp4",
+      "rev_file": "slides/files/VaultGatePitch/e35cbf479fd299c0e3a1f4fdfc0055045f0ce753712079e29b944993184b13f1_reversed.mp4"
+    },
+    {
+      "loop": false,
+      "auto_next": false,
+      "playback_rate": 1.0,
+      "reversed_playback_rate": 1.0,
+      "notes": "",
+      "dedent_notes": true,
+      "skip_animations": false,
+      "src": null,
+      "direction": "horizontal",
+      "file": "slides/files/VaultGatePitch/547939d4f717f4c9c61229a2caa1e48bfbf6b98b7e1e8b0be547b81a40754355.mp4",
+      "rev_file": "slides/files/VaultGatePitch/547939d4f717f4c9c61229a2caa1e48bfbf6b98b7e1e8b0be547b81a40754355_reversed.mp4"
+    }
+  ],
+  "resolution": [
+    1920,
+    1080
+  ],
+  "background_color": "#333"
+}
