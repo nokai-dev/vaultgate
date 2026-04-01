@@ -111,8 +111,19 @@ echo -e "${YELLOW}▶ Starting VaultGate HTTP server on port ${VAULTGATE_PORT}..
 # Clear port before starting
 kill_port $VAULTGATE_PORT
 
-# Load .env.local (contains AUTH0_CLIENT_SECRET)
+# Load .env.local for Slack credentials only
+# Then UNSET Auth0 vars to force DEMO_MODE (otherwise real CIBA runs with 60s timeout)
 set -a && source .env.local && set +a
+unset AUTH0_DOMAIN AUTH0_CLIENT_ID AUTH0_CLIENT_SECRET AUTH0_TOKEN_VAULT_CONNECTION_ID
+
+# Force demo mode explicitly (belt-and-suspenders)
+export VAULTGATE_DEMO_MODE=true
+
+# Demo config — fast CIBA (3 polls × 400ms ≈ 1.2s instead of 6s default)
+export DEMO_APPROVAL_DELAY_POLLS=3
+export VAULTGATE_PORT=18792
+export VAULTGATE_HOST=localhost
+export VAULTGATE_QUIET=1   # suppress startup banner so JSON captures stay clean
 
 # Use tsx to run the server directly (no build step needed)
 node_modules/.bin/tsx src/index.ts &

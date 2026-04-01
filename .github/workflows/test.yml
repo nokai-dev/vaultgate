@@ -56,4 +56,4 @@ jobs:
         run: npm run build
 
       - name: Try demo (30s timeout)
-        run: timeout 30 bash demo-try.sh || true
+        run: timeout 30 bash demo-try.sh
