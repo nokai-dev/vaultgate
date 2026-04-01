@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VaultGate Pitch — Frame-by-Frame Viewer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a; color: #fff; min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        header h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+        header p { opacity: 0.9; font-size: 14px; }
+        .viewer-container {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 40px;
+        }
+        .video-wrapper {
+            background: #1a1a1a; border-radius: 12px; padding: 20px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4); max-width: 1400px; width: 100%;
+        }
+        video {
+            width: 100%; border-radius: 8px; background: #000;
+            max-height: 70vh;
+        }
+        .controls {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 0; border-top: 1px solid #333; margin-top: 20px;
+        }
+        .time-display {
+            font-size: 32px; font-weight: 700; color: #667eea;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+        }
+        .frame-info {
+            font-size: 14px; color: #aaa; margin-left: 20px;
+        }
+        .buttons {
+            display: flex; gap: 10px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none; color: white; padding: 12px 24px;
+            font-size: 14px; font-weight: 600; border-radius: 8px;
+            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn:active { transform: translateY(0); }
+        .btn-small { padding: 8px 16px; font-size: 12px; }
+        .keyboard-hint {
+            text-align: center; color: #666; font-size: 12px; margin-top: 15px;
+        }
+        .keyboard-hint kbd {
+            background: #333; padding: 3px 8px; border-radius: 4px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace; margin: 0 3px;
+        }
+        .scene-markers {
+            margin-top: 20px; padding: 15px; background: #1a1a1a;
+            border-radius: 8px; width: 100%;
+        }
+        .scene-markers h4 {
+            font-size: 14px; color: #888; margin-bottom: 10px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .scene-list {
+            display: flex; flex-wrap: wrap; gap: 8px;
+        }
+        .scene-chip {
+            background: #252525; padding: 6px 12px; border-radius: 6px;
+            font-size: 12px; cursor: pointer; transition: background 0.2s;
+            border: 1px solid #333;
+        }
+        .scene-chip:hover { background: #333; }
+        .scene-chip.active {
+            background: #667eea; border-color: #667eea;
+        }
+        .file-input-wrapper {
+            margin-bottom: 20px; text-align: center;
+        }
+        #fileInput { display: none; }
+        .upload-btn {
+            background: #2563eb; padding: 12px 24px; border-radius: 8px;
+            cursor: pointer; display: inline-block; font-weight: 600;
+        }
+        .upload-btn:hover { background: #1d4ed8; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎬 VaultGate Pitch — Frame-by-Frame Viewer</h1>
+        <p>Interactive video review • Frame-accurate scrubbing • Works offline</p>
+    </header>
+    
+    <div class="viewer-container">
+        <div class="video-wrapper">
+            <div class="file-input-wrapper" id="fileInputWrapper">
+                <p style="margin-bottom: 10px; color: #aaa;">Load your video file:</p>
+                <label for="fileInput" class="upload-btn">📁 Choose Video File</label>
+                <input type="file" id="fileInput" accept="video/mp4,video/webm,video/quicktime">
+                <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                    Supports MP4, WebM, MOV • Processed locally in browser • No upload
+                </p>
+            </div>
+            
+            <video id="video" preload="metadata">
+                <source src="" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            
+            <div class="controls">
+                <div>
+                    <div class="time-display" id="timeDisplay">00:00.000</div>
+                    <div class="frame-info" id="frameInfo">Frame: 0 / 0 (0 FPS)</div>
+                </div>
+                <div class="buttons">
+                    <button class="btn btn-small" onclick="stepBack()">⏮ -1 Frame</button>
+                    <button class="btn btn-small" onclick="togglePlay()">⏯ Play/Pause</button>
+                    <button class="btn btn-small" onclick="stepForward()">+1 Frame ⏭</button>
+                    <button class="btn btn-small" onclick="setSpeed(0.25)">0.25x</button>
+                    <button class="btn btn-small" onclick="setSpeed(0.5)">0.5x</button>
+                    <button class="btn btn-small" onclick="setSpeed(1)">1x</button>
+                </div>
+            </div>
+            
+            <div class="keyboard-hint">
+                <kbd>←</kbd> -1 frame • <kbd>→</kbd> +1 frame • 
+                <kbd>Space</kbd> Play/Pause • 
+                <kbd>Shift</kbd>+<kbd>←</kbd> -10 frames • 
+                <kbd>Shift</kbd>+<kbd>→</kbd> +10 frames •
+                <kbd>Home</kbd> Start • <kbd>End</kbd> End
+            </div>
+            
+            <div class="scene-markers" id="sceneMarkers" style="display: none;">
+                <h4>📍 Scene Markers</h4>
+                <div class="scene-list" id="sceneList"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const video = document.getElementById('video');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const frameInfo = document.getElementById('frameInfo');
+        const fileInput = document.getElementById('fileInput');
+        const fileInputWrapper = document.getElementById('fileInputWrapper');
+        const sceneMarkers = document.getElementById('sceneMarkers');
+        const sceneList = document.getElementById('sceneList');
+        
+        let fps = 30; // Default, will be updated
+        let totalFrames = 0;
+        let isPlaying = false;
+        
+        // Scene markers for VaultGate Pitch (approximate timestamps)
+        const sceneMarkersData = [
+            { time: 0, name: 'Title Card' },
+            { time: 3, name: 'Title Animation' },
+            { time: 5, name: 'Incident 1' },
+            { time: 8, name: 'Inbox Red' },
+            { time: 10, name: 'Incident Text' },
+            { time: 12, name: 'DB Incident' },
+            { time: 15, name: 'The Pattern' },
+            { time: 18, name: 'Old vs Right Question' },
+            { time: 20, name: 'Green Highlight' },
+            { time: 22, name: "It's About WHEN" },
+            { time: 26, name: 'VaultGate Intro' },
+            { time: 29, name: 'Architecture Diagram' },
+            { time: 31, name: 'Phone Approval' },
+            { time: 33, name: 'Token Minted' },
+            { time: 35, name: 'Magic Moment' },
+            { time: 37, name: 'Phone Buzz' },
+            { time: 39, name: 'Approval Done' },
+            { time: 40, name: 'Comparison Table' },
+            { time: 43, name: 'Table Animated' },
+            { time: 45, name: 'Every One Valid OAuth' },
+            { time: 47, name: 'VaultGate Does' },
+            { time: 49, name: 'NOW/NEXT/FUTURE' },
+            { time: 51, name: 'Outro Logo' },
+            { time: 52, name: 'Fade Out' }
+        ];
+        
+        // File input handler
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                video.src = url;
+                fileInputWrapper.style.display = 'none';
+                video.load();
+            }
+        });
+        
+        // Video metadata loaded
+        video.addEventListener('loadedmetadata', () => {
+            // Try to get FPS from video (not always accurate in browser)
+            fps = 30; // Default assumption for Manim renders
+            const duration = video.duration;
+            totalFrames = Math.floor(duration * fps);
+            updateFrameInfo();
+            renderSceneMarkers();
+            sceneMarkers.style.display = 'block';
+        });
+        
+        // Time update
+        video.addEventListener('timeupdate', updateFrameInfo);
+        
+        function getCurrentFrame() {
+            return Math.floor(video.currentTime * fps);
+        }
+        
+        function updateFrameInfo() {
+            const current = video.currentTime;
+            const minutes = Math.floor(current / 60);
+            const seconds = Math.floor(current % 60);
+            const ms = Math.floor((current % 1) * 1000);
+            timeDisplay.textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+            
+            const frame = getCurrentFrame();
+            frameInfo.textContent = `Frame: ${frame} / ${totalFrames} (${fps} FPS)`;
+            
+            // Update active scene marker
+            updateActiveSceneMarker(current);
+        }
+        
+        function renderSceneMarkers() {
+            sceneList.innerHTML = sceneMarkersData.map((scene, i) => `
+                <div class="scene-chip" data-time="${scene.time}" onclick="seekToScene(${scene.time})">
+                    ${scene.time}s — ${scene.name}
+                </div>
+            `).join('');
+        }
+        
+        function updateActiveSceneMarker(currentTime) {
+            const chips = document.querySelectorAll('.scene-chip');
+            let activeIndex = 0;
+            sceneMarkersData.forEach((scene, i) => {
+                if (currentTime >= scene.time) activeIndex = i;
+            });
+            chips.forEach((chip, i) => {
+                chip.classList.toggle('active', i === activeIndex);
+            });
+        }
+        
+        function seekToScene(time) {
+            video.currentTime = time;
+        }
+        
+        function stepForward() {
+            video.currentTime += 1 / fps;
+        }
+        
+        function stepBack() {
+            video.currentTime = Math.max(0, video.currentTime - 1 / fps);
+        }
+        
+        function togglePlay() {
+            if (video.paused) {
+                video.play();
+                isPlaying = true;
+            } else {
+                video.pause();
+                isPlaying = false;
+            }
+        }
+        
+        function setSpeed(speed) {
+            video.playbackRate = speed;
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return; // Don't interfere with file input
+            
+            switch(e.key) {
+                case 'ArrowRight':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        video.currentTime += 10 / fps; // 10 frames
+                    } else {
+                        stepForward();
+                    }
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        video.currentTime -= 10 / fps; // 10 frames
+                    } else {
+                        stepBack();
+                    }
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    togglePlay();
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    video.currentTime = 0;
+                    break;
+                case 'End':
+                    e.preventDefault();
+                    video.currentTime = video.duration;
+                    break;
+            }
+        });
+        
+        // Auto-load video if in same directory
+        window.addEventListener('load', () => {
+            // Check if video file exists in same directory
+            const testVideo = document.createElement('video');
+            testVideo.src = 'VaultGatePitch.mp4';
+            testVideo.addEventListener('canplay', () => {
+                video.src = 'VaultGatePitch.mp4';
+                video.load();
+                fileInputWrapper.style.display = 'none';
+            });
+            testVideo.addEventListener('error', () => {
+                // File not found, keep upload button visible
+                console.log('No local video found, waiting for upload');
+            });
+        });
+    </script>
+</body>
+</html>

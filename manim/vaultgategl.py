@@ -214,13 +214,12 @@ class VaultGatePitch(Scene):
         self.wait(2)
         self.wipe()
 
-    def node_clean(self, label, icon, color=ACCENT, w=2.2, h=1.0):
-        """Clean node: box + icon + label, NO codepoint label."""
+    def node_clean(self, label, color=ACCENT, w=2.2, h=1.0):
+        """Clean node: box + label, NO icon, NO emoji."""
         box = RoundedRectangle(corner_radius=0.12, width=w, height=h,
                                fill_color=DARK_BOX, stroke_color=color, stroke_width=2.5)
-        i   = Text(icon, font_size=32, color=color).move_to(box.get_center()).shift(UP * 0.15)
-        l   = Text(label, font_size=15, color=TEXT, weight=BOLD).next_to(i, DOWN, buff=0.08)
-        return VGroup(box, i, l)
+        l   = Text(label, font_size=18, color=TEXT, weight=BOLD).move_to(box.get_center())
+        return VGroup(box, l)
 
     def scene_3_vaultgate(self):
         # ── Title — compact, top band ─────────────────────────────────────
@@ -232,85 +231,103 @@ class VaultGatePitch(Scene):
         self.wait(1.5)
         self.wipe()
 
-        # ── CORRECT FLOW: Services → GATE → Phone → Services ─────────────
-        # Left: Services (what AI wants to access)
-        # Center: VaultGate + GATE
-        # Right of center: Phone (green = approved, red = denied)
-        # Right: Services (accessible after approval)
+        # ── CORRECT FLOW: AI Agent → VaultGate → GATE → Phone → Services ─────────────
+        # SAFE MARGIN LAYOUT: All elements within +/- 6.0 units (frame is +/- 7.0)
+        # This ensures 1-unit (≈70px) margin on all sides
+        # Left: AI Agent (the requester)
+        # Center-left: VaultGate
+        # Center-right: GATE (decision point)
+        # Right: Phone (red ✗ → green ✓ on approval)
+        # Far Right: Services (red if denied, green if approved) - COMPACT 2x2 GRID
         
-        # LEFT: Service icons (what AI wants)
-        slack_l = self.node_clean("Slack", "💬", MUTED, 2.0, 1.0).shift(LEFT * 7.0 + UP * 1.5)
-        github_l = self.node_clean("GitHub", "📂", MUTED, 2.0, 1.0).shift(LEFT * 7.0 + UP * 0.2)
-        google_l = self.node_clean("Google", "📧", MUTED, 2.0, 1.0).shift(LEFT * 7.0 + DOWN * 1.1)
-        drive_l = self.node_clean("Drive", "📁", MUTED, 2.0, 1.0).shift(LEFT * 7.0 + DOWN * 2.4)
+        # LEFT: AI Agent (single box) - positioned at x=-5.5 for safe left margin
+        ai_agent = self.node_clean("AI Agent", MUTED, 2.2, 0.9).shift(LEFT * 5.5)
         
-        self.play(Write(slack_l), Write(github_l), Write(google_l), Write(drive_l), run_time=0.6)
+        self.play(Write(ai_agent), run_time=0.4)
         
-        left_label = body_text("AI wants access", size=18, color=MUTED).next_to(slack_l, UP, buff=0.3)
-        self.play(Write(left_label), run_time=0.3)
+        agent_lbl = body_text("requests access", size=14, color=MUTED).next_to(ai_agent, DOWN, buff=0.25)
+        self.play(Write(agent_lbl), run_time=0.3)
         
-        # CENTER: VaultGate + GATE
-        vaultgw = self.node_clean("VaultGate", "🛡", ACCENT, 3.5, 1.4).shift(LEFT * 1.5)
-        gate = hex_gate("GATE", WARN, 3.2).shift(RIGHT * 1.5)
+        # CENTER-LEFT: VaultGate - positioned at x=-2.5
+        vaultgw = self.node_clean("VaultGate", ACCENT, 2.6, 1.1).shift(LEFT * 2.5)
         
         self.play(Write(vaultgw), run_time=0.4)
+        
+        # CENTER-RIGHT: GATE (decision point) - positioned at x=0.5
+        gate = hex_gate("GATE", WARN, 2.5).shift(RIGHT * 0.5)
+        
         self.play(Write(gate), run_time=0.4)
         
-        # Arrow: Services → VaultGate → GATE
-        arr1 = Arrow(slack_l.get_right() + RIGHT * 0.5, vaultgw.get_left(), buff=0.2, color=MUTED, stroke_width=6)
-        arr2 = Arrow(vaultgw.get_right(), gate.get_left(), buff=0.2, color=WARN, stroke_width=6)
+        # Arrows: AI Agent → VaultGate → GATE
+        arr1 = Arrow(ai_agent.get_right(), vaultgw.get_left(), buff=0.25, color=MUTED, stroke_width=5)
+        arr2 = Arrow(vaultgw.get_right(), gate.get_left(), buff=0.25, color=WARN, stroke_width=5)
         self.play(GrowArrow(arr1), GrowArrow(arr2), run_time=0.5)
         
-        # RIGHT: Phone with status indicator
+        # RIGHT: Phone with status indicator - positioned at x=3.2
         phone = VGroup(
-            RoundedRectangle(corner_radius=0.25, width=2.0, height=4.0, fill_color="#000000", stroke_color=MUTED, stroke_width=3),
-            RoundedRectangle(corner_radius=0.12, width=1.7, height=3.2, fill_color=DARK_BOX, stroke_color=BORDER, stroke_width=1)
-        ).shift(RIGHT * 5.0)
+            RoundedRectangle(corner_radius=0.22, width=1.4, height=2.8, fill_color="#000000", stroke_color=MUTED, stroke_width=2.5),
+            RoundedRectangle(corner_radius=0.1, width=1.18, height=2.25, fill_color=DARK_BOX, stroke_color=BORDER, stroke_width=1)
+        ).shift(RIGHT * 3.2)
         
         # Status indicator (starts red, turns green on approve)
-        status_circle = Circle(radius=0.6, stroke_width=4, color=RED).next_to(phone, UP, buff=0.3)
-        status_icon = Text("✗", font_size=36, color=RED).move_to(status_circle)
+        status_circle = Circle(radius=0.4, stroke_width=3, color=RED).next_to(phone, UP, buff=0.25)
+        status_icon = Text("✗", font_size=28, color=RED).move_to(status_circle)
         
-        phone_arr = Arrow(gate.get_right(), phone.get_left(), buff=0.3, color=WARN, stroke_width=6)
-        ciba_lbl = body_text("CIBA Push", size=18, color=WARN).next_to(phone_arr, DOWN, buff=0.2)
+        phone_arr = Arrow(gate.get_right(), phone.get_left(), buff=0.25, color=WARN, stroke_width=5)
+        ciba_lbl = body_text("CIBA Push", size=14, color=WARN).next_to(phone_arr, DOWN, buff=0.15)
         
         self.play(Write(phone), GrowArrow(phone_arr), Write(ciba_lbl), run_time=0.5)
         self.play(Write(status_circle), Write(status_icon), run_time=0.3)
         
         # Phone notification
-        notif = RoundedRectangle(corner_radius=0.1, width=1.4, height=0.9, fill_color=AUTH0, stroke_width=0).move_to(phone).shift(UP * 0.5)
-        notif_text = Text("Allow?", font_size=18, color=WHITE, weight=BOLD).move_to(notif)
+        notif = RoundedRectangle(corner_radius=0.08, width=0.95, height=0.6, fill_color=AUTH0, stroke_width=0).move_to(phone).shift(UP * 0.4)
+        notif_text = Text("Allow?", font_size=14, color=WHITE, weight=BOLD).move_to(notif)
         self.play(FadeIn(VGroup(notif, notif_text)), run_time=0.3)
         
         # APPROVAL: Red → Green
         self.play(
             status_circle.animate.set_color(GREEN),
-            status_icon.animate.become(Text("✓", font_size=36, color=GREEN).move_to(status_circle)),
+            status_icon.animate.become(Text("✓", font_size=28, color=GREEN).move_to(status_circle)),
             notif.animate.set_fill(SAFE),
             run_time=0.5
         )
         
-        # RIGHT: Services now accessible (green)
-        slack_r = self.node_clean("Slack", "💬", SAFE, 2.0, 1.0).shift(RIGHT * 7.0 + UP * 1.5)
-        github_r = self.node_clean("GitHub", "📂", SAFE, 2.0, 1.0).shift(RIGHT * 7.0 + UP * 0.2)
-        google_r = self.node_clean("Google", "📧", SAFE, 2.0, 1.0).shift(RIGHT * 7.0 + DOWN * 1.1)
-        drive_r = self.node_clean("Drive", "📁", SAFE, 2.0, 1.0).shift(RIGHT * 7.0 + DOWN * 2.4)
+        # FAR RIGHT: Services (red if denied, green if approved)
+        # Start with RED (blocked state) - COMPACT 2x2 GRID at x=5.2 and x=6.8 (MAX)
+        # This keeps rightmost edge at ~7.7 units, but nodes are 0.9 wide so edge is at 6.8+0.9=7.7
+        # We need to move further left! Let's use x=5.0 and x=6.3
+        slack_r = self.node_clean("Slack", DANGER, 1.6, 0.7).shift(RIGHT * 5.0 + UP * 0.9)
+        github_r = self.node_clean("GitHub", DANGER, 1.6, 0.7).shift(RIGHT * 5.0 + DOWN * 0.15)
+        google_r = self.node_clean("Google", DANGER, 1.6, 0.7).shift(RIGHT * 6.3 + UP * 0.9)
+        drive_r = self.node_clean("Drive", DANGER, 1.6, 0.7).shift(RIGHT * 6.3 + DOWN * 0.15)
         
         self.play(Write(slack_r), Write(github_r), Write(google_r), Write(drive_r), run_time=0.6)
         
-        right_label = body_text("Access granted ✓", size=18, color=SAFE).next_to(slack_r, UP, buff=0.3)
+        right_label = body_text("blocked", size=14, color=DANGER).next_to(slack_r, UP, buff=0.25)
         self.play(Write(right_label), run_time=0.3)
         
-        # Arrow: Phone → Services (approval grants access)
-        arr3 = Arrow(phone.get_right() + RIGHT * 0.3, slack_r.get_left() + LEFT * 0.5, buff=0.2, color=SAFE, stroke_width=5)
-        arr4 = Arrow(phone.get_right() + RIGHT * 0.3, drive_r.get_left() + LEFT * 0.5, buff=0.2, color=SAFE, stroke_width=5)
+        # Arrow: Phone → Services (approval determines state)
+        arr3 = Arrow(phone.get_right() + RIGHT * 0.15, slack_r.get_left() + LEFT * 0.25, buff=0.15, color=DANGER, stroke_width=4)
+        arr4 = Arrow(phone.get_right() + RIGHT * 0.15, github_r.get_left() + LEFT * 0.25, buff=0.15, color=DANGER, stroke_width=4)
         self.play(GrowArrow(arr3), GrowArrow(arr4), run_time=0.5)
         
-        # Bottom legend
+        # Services turn GREEN after approval
+        self.play(
+            slack_r.animate.set_color(SAFE),
+            github_r.animate.set_color(SAFE),
+            google_r.animate.set_color(SAFE),
+            drive_r.animate.set_color(SAFE),
+            right_label.animate.become(body_text("accessible", size=14, color=SAFE)),
+            arr3.animate.set_color(SAFE),
+            arr4.animate.set_color(SAFE),
+            run_time=0.6
+        )
+        
+        # Bottom legend (no emojis) - with safe bottom margin
         legend = VGroup(
-            body_text("🔴 Red = blocked (waiting)", size=16, color=RED),
-            body_text("🟢 Green = approved (access granted)", size=16, color=GREEN)
-        ).arrange(DOWN, buff=0.35).to_edge(DOWN, buff=0.5)
+            body_text("Red = blocked (waiting/denied)", size=12, color=DANGER),
+            body_text("Green = approved (access granted)", size=12, color=GREEN)
+        ).arrange(DOWN, buff=0.3).to_edge(DOWN, buff=0.6)
         self.play(Write(legend), run_time=0.4)
         
         self.wait(2)
