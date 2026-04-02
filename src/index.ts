@@ -149,10 +149,11 @@ app.get('/', (_req: Request, res: Response) => {
   });
 });
 
-// Error handling
+// Error handling — catch JSON parse errors (express.json() sets err.status=400 for malformed JSON)
 app.use((err: Error, _req: Request, res: Response, _next: express.NextFunction) => {
   console.error('[ERROR]', err.message);
-  res.status(500).json({ success: false, error: err.message });
+  const status = (err as any).status ?? (err as any).statusCode ?? 500;
+  res.status(status).json({ success: false, error: err.message });
 });
 
 // Only start server if this is the main module

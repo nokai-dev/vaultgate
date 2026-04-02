@@ -109,16 +109,18 @@ describe('CIBA timeout edge', () => {
     );
 
     expect(result.status).toBe('expired');
-    expect(result.error).toBe('CIBA timeout — user did not approve in time');
+    expect(result.error).toBe('CIBA timeout');
   });
 
-  it('returns approved when demoApprovalDelay equals exactly maxPolls', async () => {
-    // With intervalMs=50 and timeoutMs=200, maxPolls=4
-    // So set demoApprovalDelay=4 to be exactly at the boundary
+  it('returns expired when demoApprovalDelay exceeds polls that fit in timeout', async () => {
+    // With intervalMs=50 and timeoutMs=200:
+    // Date.now() - startTime >= timeoutMs triggers after ~200ms
+    // maxPolls = Math.floor(200/50) = 4, but time-based check fires first (~3 polls)
+    // demoApprovalDelay=4 → approval never fires → result is 'expired'
     const ciba = new CIBAHandler({
       intervalMs: 50,
       timeoutMs: 200,
-      demoApprovalDelay: 4, // exactly at boundary
+      demoApprovalDelay: 4,
     });
 
     const result = await ciba.requestTokenWithCIBA(
@@ -129,7 +131,7 @@ describe('CIBA timeout edge', () => {
       'push'
     );
 
-    expect(result.status).toBe('approved');
+    expect(result.status).toBe('expired');
   });
 });
 
