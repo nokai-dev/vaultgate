@@ -84,8 +84,11 @@ app.post('/action', async (req: Request, res: Response) => {
     const result = await getVaultGate().executeAction(actionRequest);
     return res.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return res.status(500).json({
+    const err = error as { status?: number; message?: string };
+    const message = err?.message ?? 'Unknown error';
+    // Preserve 4xx status codes set by middleware (e.g. express.json() malformed JSON → 400)
+    const status = (err?.status && err.status >= 400 && err.status < 500) ? err.status : 500;
+    return res.status(status).json({
       success: false,
       error: message,
     });

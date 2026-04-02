@@ -10,3 +10,18 @@ media/
 VaultGatePitch_temp.mp4
 manim/videos/*.mp4
 manim/__pycache__/
+
+# Manim build debris
+manim/videos/TestArch/
+manim/videos/TestArch2/
+manim/frames_qwen/
+manim/slides/
+manim/vaultgate_pitch_full.mp4
+manim/vaultgate_pitch_full_assets/
+manim/vaultgate_slides_final.tar.gz
+manim/vaultgate_slides_html.tar.gz
+manim/vaultgate_final.html
+manim/test_arch.py
+manim/test_arch2.py
+manim/test_arch_simple.py
+manim/test_frame.png
