@@ -162,6 +162,11 @@ export class SlackClient {
    * Get conversation info
    */
   async getChannel(channelName: string): Promise<string | undefined> {
+    if (this.demoMode) {
+      // Demo mode: return undefined (channel resolution not available without real Slack API)
+      return undefined;
+    }
+
     const result = await this.client.conversations.list({
       types: 'public_channel,private_channel',
     });

@@ -164,11 +164,13 @@ describe('TokenVault real-mode connection (lines 63-64)', () => {
     process.env.AUTH0_DOMAIN = 'myapp.auth0.com';
     process.env.AUTH0_CLIENT_ID = 'real_client_id';
     process.env.AUTH0_CLIENT_SECRET = 'real_client_secret';
+    process.env.AUTH0_TOKEN_VAULT_CONNECTION_ID = 'slack';
   });
 
   it('isConnected returns true when AUTH0_DOMAIN and AUTH0_CLIENT_ID are set', () => {
     const vault = new TokenVault();
-    expect(vault.isConnected()).toBe(true);
+    // isConnected is a private field — test the public accessor isVaultConnected()
+    expect(vault.isVaultConnected()).toBe(true);
   });
 
   it('getConnectionInfo returns demoMode=false when real credentials present', () => {
@@ -208,6 +210,7 @@ describe('TokenVault real-mode connection (lines 63-64)', () => {
     delete process.env.AUTH0_DOMAIN;
     delete process.env.AUTH0_CLIENT_ID;
     delete process.env.AUTH0_CLIENT_SECRET;
+    delete process.env.AUTH0_TOKEN_VAULT_CONNECTION_ID;
   });
 });
 
