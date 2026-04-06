@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 rm -rf media/videos/vaultgate_pitch/1080p60/partial_movie_files/
 
 # Render
-/usr/bin/python3 /usr/local/bin/manimgl -w --${Q} --fps=60 vaultgategl.py VaultGatePitch
+/data/.local/bin/manimgl -w --${Q} --fps=60 vaultgategl.py VaultGatePitch
 
 # Trim to actual animation length (animation ends at ~52.8s)
 if [ -f videos/VaultGatePitch.mp4 ]; then
