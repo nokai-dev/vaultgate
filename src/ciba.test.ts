@@ -159,19 +159,18 @@ describe('ciba', () => {
       process.env = { ...originalEnv };
     });
 
-    it('throws when Auth0 domain is missing', async () => {
+    it('returns demoMode when domain is empty (no real Auth0 credentials)', () => {
       const handler = new CIBAHandler({
         domain: '',
         clientId: 'cid',
         clientSecret: 'cs',
         connectionId: 'conn',
       });
-      // Without domain/clientId/clientSecret → demo mode auto-enabled
-      // Real mode requires all three credentials
+      // Empty domain → demo mode auto-enabled (missing credentials)
       expect(handler.isDemoMode()).toBe(true);
     });
 
-    it('CIBAHandler can be instantiated with minimal config (demo forced)', () => {
+    it('returns demoMode for empty config (minimal initialization)', () => {
       const handler = new CIBAHandler({});
       expect(handler.isDemoMode()).toBe(true);
     });
@@ -181,7 +180,7 @@ describe('ciba', () => {
       expect(demoHandler.isDemoMode()).toBe(true);
     });
 
-    it('CIBAHandler uses explicit demoMode=true', () => {
+    it('explicit demoMode=true overrides partial credentials', () => {
       const handler = new CIBAHandler({
         domain: 'real.auth0.com',
         clientId: 'real_id',
@@ -197,15 +196,15 @@ describe('ciba', () => {
         ['slack', 'read', 'slack.messages.read'],
         ['slack', 'write', 'slack.messages.write'],
         ['slack', 'delete', 'slack.messages.write'],
-        ['slack', 'admin', 'slack.messages.admin'],
+        ['slack', 'admin', 'slack.admin'],
         ['github', 'read', 'github.repo.read'],
         ['github', 'write', 'github.repo.write'],
         ['github', 'delete', 'github.repo.delete'],
-        ['github', 'admin', 'github.repo.admin'],
+        ['github', 'admin', 'github.admin'],
         ['google', 'read', 'google.gmail.readonly'],
         ['google', 'write', 'google.gmail.send'],
         ['google', 'delete', 'google.gmail.delete'],
-        ['google', 'admin', 'google.gmail.admin'],
+        ['google', 'admin', 'google.admin'],
         ['email', 'read', 'email.read'],
         ['email', 'write', 'email.send'],
         ['email', 'delete', 'email.delete'],

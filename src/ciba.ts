@@ -299,6 +299,19 @@ export class CIBAHandler {
   shouldUseCIBA(action: ActionType): boolean {
     return requiresCIBA(action);
   }
+
+  /** Returns true if running in demo mode (no real Auth0). */
+  isDemoMode(): boolean {
+    return this.demoMode;
+  }
+
+  /**
+   * Returns the required scope string for a service/action pair.
+   * Delegates to scopes.ts so CIBA handler callers don't need to import it directly.
+   */
+  getRequiredScope(service: ServiceType, action: ActionType): string {
+    return getRequiredScope(service, action);
+  }
 }
 
 export function createCIBAHandler(config: CIBAConfig): CIBAHandler {
